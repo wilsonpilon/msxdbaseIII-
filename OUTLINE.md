@@ -35,6 +35,7 @@ Ordem entre fases 2 e 3: `[?]` o SPEC coloca UI antes de índices; as diretrizes
 - [x] 0.5 Lições do ambiente registradas (SPEC seção 7): ROM inacessível sob DOS, `PRINT_WIDTH_1`, cursor da BIOS, DIRIN
 - [x] 0.5b Vídeo direto no VDP com cópia da tela em RAM (rolagem rápida, escrita em trechos) e teclado pela BIOS (CHSNS/CHGET via CALSLT); nada de console do MSX-DOS. Correção do cursor fixo: `[~]` falta validar
 - [x] 0.5c Extensão MSX `SET COLOR TO W+/B` e `SET COLOR TO 15,4` (alias `COLOR`)
+- [~] 0.5d Fonte SCREEN 0 de `resource/vram.dat` (256 glifos): carregada do disco para VRAM; falta conferir a renderização no openMSX
 - [ ] 0.6 Detecção de MSX1 x MSX2 sem ler a ROM (a checagem antiga de versão foi removida porque lia a ROM)
 - [ ] 0.7 Teste em hardware real e em outras configurações de memória (512 KB e 1 MB, turbo R)
 - [ ] 0.8 Gravação de arquivos na camada de plataforma (criar, escrever, renomear, apagar) — necessário para a sub-fase 1.2

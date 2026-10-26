@@ -39,6 +39,7 @@
 # MSX dBASE build output
 /project/out/
 /project/emul/
+/project/data/VRAM.DAT
 
 # Debug files
 *.dSYM/

@@ -18,6 +18,8 @@ Execute `.\build.ps1` na raiz do repositorio. O script chama o builder do
 MSXgl usando os arquivos da pasta [project](./project/). É necessário ter
 Node.js disponível no `PATH`, além das ferramentas SDCC e MSXhex esperadas em
 `MSXgl/tools`.
+O build inclui `resource/vram.dat` como `VRAM.DAT` na imagem de disco; o console
+usa essa fonte de 256 caracteres no SCREEN 0 de 80 colunas.
 
 O perfil está configurado para MSX2 (`Machine = "2"`) e MSX-DOS 2
 (`Target = "DOS2"`). O build gera `project/out/msxdbase.com` e, quando a

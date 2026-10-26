@@ -37,9 +37,10 @@ data/CLIENTES.DBF. Modulos e libs registrados em project/project_config.js.
 - Console reescrito: VDP direto + copia da tela em RAM (rolagem rapida) e teclado pela BIOS
   (CHSNS/CHGET via CALSLT) para eliminar o cursor fixo; compilou, FALTA VALIDAR no emulador.
 - Novo comando SET COLOR TO W+/B (estilo dBASE) ou SET COLOR TO 15,4 (paleta MSX); alias COLOR.
+- Fonte de 256 caracteres de resource/vram.dat integrada ao SCREEN 0; build inclui VRAM.DAT no disco. Falta conferir visualmente no openMSX.
 
 === PROXIMOS PASSOS (proxima sessao) ===
-1. Validar no openMSX: (a) o cursor fixo sumiu, (b) SET COLOR TO, (c) o Marco 1 (comandos acima);
+1. Validar no openMSX: (a) a fonte de resource/vram.dat, (b) o cursor fixo sumiu, (c) SET COLOR TO, (d) o Marco 1 (comandos acima);
    corrigir o que aparecer.
    Conferir: alinhamento das colunas do LIST, registro excluido marcado com *, datas MM/DD/AA,
    pausa do LIST, mensagens de erro (USE de arquivo inexistente).

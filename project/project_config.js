@@ -7,7 +7,7 @@ CheckVersion = false;
 AppSignature = false;
 CompileComplexity = "Default";
 DiskSize = "720K";
-DiskFiles = [ "data/CLIENTES.DBF" ];
+DiskFiles = [ "data/CLIENTES.DBF", "data/VRAM.DAT" ];
 
 if (process.platform === "win32")
 	DskTool = `${ToolsDir}build/msxtar/msxtar.exe`;
