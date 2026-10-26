@@ -4,27 +4,47 @@ Clone *clean room* do dBASE II para MSX, com melhorias de interface e evolucao
 gradual de recursos do dBASE III. O escopo e o roteiro estao em
 [SPEC.md](./SPEC.md).
 
+Versao atual: **1.2 Shell**. Veja as [notas do release](./RELEASE.md) e o
+[Changelog](./Changelog.MD).
+
 ## Estado atual
 
-O projeto comeca pela base executavel para MSX-DOS 2, usando C/SDCC e a
-biblioteca MSXgl incluida neste repositorio. O programa inicial apenas mostra
-uma tela de identificacao em modo texto de 80 colunas; parser, comandos e
-arquivos DBF serao implementados em marcos seguintes.
+O projeto usa C/SDCC, MSXgl e MSX-DOS 2. A CLI oferece console de 80 colunas,
+comandos de navegacao e leitura de arquivos DBF dBASE III.
 
 ## Compilar no Windows
 
-Execute `build.bat` na raiz do repositorio. O script usa o Node.js incluido em
-`MSXgl` quando disponivel e gera os arquivos de build em `out/`, incluindo
-`msxdbase.com`.
+Execute `.\build.ps1` na raiz do repositorio. O script chama o builder do
+MSXgl usando os arquivos da pasta [project](./project/). É necessário ter
+Node.js disponível no `PATH`, além das ferramentas SDCC e MSXhex esperadas em
+`MSXgl/tools`.
 
-Para compilar manualmente com Node.js instalado:
+O perfil está configurado para MSX2 (`Machine = "2"`) e MSX-DOS 2
+(`Target = "DOS2"`). O build gera `project/out/msxdbase.com` e, quando a
+versão Windows `MSXgl/tools/build/msxtar/msxtar.exe` está disponível, também
+gera a imagem de disco `project/emul/dsk/DOS2_msxdbase.dsk`, com o sistema
+MSX-DOS 2 e o executável.
+O alvo de uso previsto é um MSX2 com 1024 KB de RAM; essa capacidade é uma
+característica do hardware e não uma opção de compilação do formato `.COM`.
 
-```text
-node MSXgl/engine/script/js/build.js
+Argumentos adicionais são encaminhados ao builder do MSXgl, por exemplo:
+
+```powershell
+.\build.ps1 clean
 ```
 
-Execute o `.COM` em um sistema ou emulador MSX com MSX-DOS 2. Pressione ESC
-para sair da tela inicial.
+O comando `VER` mostra a versao embutida no executavel. Cada compilacao
+bem-sucedida incrementa automaticamente `Y` para a proxima compilacao. Durante
+uma rodada de testes, mantenha a versao usando `.build.ps1 -KeepVersion`;
+`clean` tambem nao incrementa a versao. O codinome pertence a `X` e muda quando
+um novo marco comeca; o incremento de `X` e a publicacao do release sao feitos
+deliberadamente, com tag `X.Y`, `RELEASE.md` e `Changelog.MD` atualizados juntos.
+
+O esquema combina referencias a Unix e C classicos sem usar nomes de pessoas.
+O primeiro codinome, **Shell**, evoca o shell do Unix e a familia C Shell.
+
+Execute o `.COM` em um MSX2 com MSX-DOS 2. No prompt `.`, digite `HELP` para
+ver os comandos disponiveis.
 
 Se executado em MSX1, o programa agora exibe uma mensagem informando que MSX2+
 e necessario e permite sair com ESC, em vez de aparentar travamento.

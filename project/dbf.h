@@ -1,0 +1,74 @@
+#ifndef DBF_H
+#define DBF_H
+
+#include "msxgl.h"
+
+// Engine DBF somente leitura (Marco 1). Nao depende de UI nem de MSX-DOS:
+// so usa a camada platform_*.
+// Formato suportado: dBASE III sem memo (versao 0x03). dBASE II (0x02) fica para depois.
+
+#define DBF_MAX_FIELDS  32   // campos por arquivo (dBASE III permite 128)
+#define DBF_MAX_RECLEN  256  // tamanho maximo do registro, em bytes (buffer estatico)
+#define DBF_NAME_LEN    11   // 10 caracteres + terminador
+
+// Codigos de erro
+enum DbfError
+{
+	DBF_OK = 0,
+	DBF_ERR_OPEN,        // arquivo nao encontrado / nao abre
+	DBF_ERR_READ,        // falha ou fim inesperado na leitura
+	DBF_ERR_FORMAT,      // cabecalho invalido ou versao nao suportada
+	DBF_ERR_LIMITS,      // excede DBF_MAX_FIELDS ou DBF_MAX_RECLEN
+	DBF_ERR_RANGE,       // numero de registro fora do arquivo
+};
+
+typedef struct DbfField
+{
+	c8  Name[DBF_NAME_LEN];
+	c8  Type;       // C, N, L, D, M
+	u8  Length;
+	u8  Decimals;
+	u16 Offset;     // posicao dentro do registro (1 = apos a marca de exclusao)
+} DbfField;
+
+typedef struct Dbf
+{
+	u8  Handle;                    // PFILE_INVALID quando fechado
+	u32 RecCount;
+	u16 HeaderLen;
+	u16 RecLen;
+	u8  FieldCount;
+	u8  LastUpdate[3];             // ano (desde 1900), mes, dia
+	DbfField Fields[DBF_MAX_FIELDS];
+
+	u32 RecNo;                     // registro atual (1..RecCount); 0 = nenhum
+	bool Bof;
+	bool Eof;
+	u8  Buffer[DBF_MAX_RECLEN];    // registro atual; Buffer[0] = marca de exclusao
+} Dbf;
+
+// Inicializa a estrutura como "fechada"
+void Dbf_Init(Dbf* db);
+
+// Abre o arquivo, le o cabecalho e posiciona no registro 1 (ou EOF se vazio)
+u8 Dbf_Open(Dbf* db, const c8* path);
+
+// Fecha o arquivo (seguro chamar em arquivo ja fechado)
+void Dbf_Close(Dbf* db);
+
+// Indica se ha um arquivo aberto
+bool Dbf_IsOpen(const Dbf* db);
+
+// Vai para o registro n (1..RecCount) e le seus dados
+u8 Dbf_Goto(Dbf* db, u32 n);
+
+// Move n registros (pode ser negativo). Passar do fim deixa Eof, antes do inicio Bof
+u8 Dbf_Skip(Dbf* db, i32 n);
+
+// Registro atual marcado como excluido?
+bool Dbf_IsDeleted(const Dbf* db);
+
+// Dados do campo i no registro atual (nao terminado em zero; tamanho = Fields[i].Length)
+const u8* Dbf_FieldData(const Dbf* db, u8 i);
+
+#endif

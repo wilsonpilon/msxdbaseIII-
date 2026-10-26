@@ -37,8 +37,8 @@
 *.hex
 
 # MSX dBASE build output
-/out/
-/emul/
+/project/out/
+/project/emul/
 
 # Debug files
 *.dSYM/

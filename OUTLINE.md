@@ -1,231 +1,138 @@
 # MSX dBASE III- / dBASE II+ Clone — OUTLINE VIVO
 
-Data da base do documento: 2026-10-24
-Última atualização: 2026-10-24
-Status geral: shell inicial / sem núcleo de banco funcional
+Última atualização: 2026-10-26
+Status geral: **Fase 0 concluída; Fase 1.1 implementada e aguardando validação no emulador; versão 1.2 Shell preparada**
 
-## 0. Documento vivo e contexto
+Este arquivo é o **diário de progresso**: o que foi feito, o que falta e o que vamos incluindo. A especificação completa está em [SPEC.md](SPEC.md); o resumo curto para retomada está em [resume.txt](resume.txt). Os dois devem ser atualizados junto com este ao fim de cada sessão.
 
-Este arquivo deve funcionar como memória operacional do projeto para a continuidade em outro PC, em outra IA ou em uma nova sessão de trabalho.
-
-Ele deve responder rapidamente a estas perguntas:
-- onde o projeto está?
-- o que foi validado?
-- o que foi decidido?
-- o que falta?
-- qual é o próximo passo prático?
+Legenda: `[x]` feito · `[~]` feito, falta validar · `[ ]` a fazer · `[?]` decisão pendente
 
 ---
 
-## 1. Visão geral
+## 1. Visão em uma linha
+Ambiente xBase nativo para MSX2/2+/turbo R: núcleo compatível com dBASE II, recursos selecionados do dBASE III, em C (SDCC + MSXgl), sobre MSX-DOS 2 e Memory Mapper. Projeto de estudo: código modular e bem comentado. Detalhes em [SPEC.md](SPEC.md) (seção 6).
 
-Este projeto é um clone clean-room de dBASE II+ para MSX, evoluindo para um ambiente compatível com recursos de dBASE III/III+ em arquitetura MSX 2+/turboR, com foco em:
+## 2. Mapa de fases e sub-fases
 
-- MSX 2+ / MSX turboR
-- 512 KB de RAM mapeada (Memory Mapper)
-- MSX-DOS 2
-- armazenamento em SD/HD/IDE/Nextor
-- compatibilidade com arquivos .dbf e scripts .prg
-- execução nativa como .COM em MSX-DOS 2
+| Fase | Tema | Marcos das diretrizes | Estado |
+|---|---|---|---|
+| 0 | Fundação e infraestrutura | Marco 0 | concluída |
+| 1 | Núcleo dBASE II+ (CLI) | Marcos 1 a 4 | em andamento |
+| 2 | Interface MSX (TUI, assistente) | Marco 6 | não iniciada |
+| 3 | Índices NDX (B-Tree) | Marco 5 | não iniciada |
+| 4 | Recursos dBASE III/III+ | Marco 7 | não iniciada |
 
-O objetivo não é apenas recriar um editor de banco de dados superficial; é criar um ambiente de banco de dados funcional, compatível com o espírito do dBASE clássico, preservando e evoluindo recursos do dBASE II e III em hardware limitado do Z80.
-
----
-
-## 2. Contexto técnico e de produto
-
-### 2.1 Hardware alvo
-- Plataforma: MSX 2+
-- CPU: Z80A, com suporte a overclock de 5/7/10 MHz
-- RAM: mínimo 256 KB, recomendado 512 KB mapeada
-- VDP: V9958 em modo texto 80 colunas / TUI
-- SO: MSX-DOS 2.x
-- Armazenamento: SD, IDE, Nextor, MegaFlashROM SD, Sunrise IDE
-
-### 2.2 Stack de desenvolvimento
-- Linguagem: C (SDCC)
-- Biblioteca principal: MSXgl
-- Compilação: executável .COM para MSX-DOS 2
-- Convenção: uso de tipos menores onde possível, buffers estáticos, otimização para memória mapeada e VDP
+Ordem entre fases 2 e 3: `[?]` o SPEC coloca UI antes de índices; as diretrizes colocam índices antes. Segue-se o SPEC até decisão (ver SPEC seção 8).
 
 ---
 
-## 3. Fundação do spec
+## 3. Fase 0 — Fundação (Marco 0) — CONCLUÍDA
 
-O arquivo [SPEC.md](SPEC.md) define as quatro fases de evolução previstas:
+- [x] 0.1 Repositório, build via `build.ps1`, MSXgl + SDCC, `.COM` para MSX-DOS 2, disco `.dsk` para o openMSX
+- [x] 0.2 Console de texto 80x24 em Text2: rolagem, cursor, escrita, números, edição de linha (`console.c`)
+- [x] 0.3 Prompt `.` e laço de comandos (`prompt.c`)
+- [x] 0.4 Camada de plataforma (`platform.c`): versão do MSX-DOS, detecção de Memory Mapper (total/livre em KB), arquivos por handle (abrir, ler, posicionar, tamanho, fechar)
+- [x] 0.5 Lições do ambiente registradas (SPEC seção 7): ROM inacessível sob DOS, `PRINT_WIDTH_1`, cursor da BIOS, DIRIN
+- [x] 0.5b Vídeo direto no VDP com cópia da tela em RAM (rolagem rápida, escrita em trechos) e teclado pela BIOS (CHSNS/CHGET via CALSLT); nada de console do MSX-DOS. Correção do cursor fixo: `[~]` falta validar
+- [x] 0.5c Extensão MSX `SET COLOR TO W+/B` e `SET COLOR TO 15,4` (alias `COLOR`)
+- [ ] 0.6 Detecção de MSX1 x MSX2 sem ler a ROM (a checagem antiga de versão foi removida porque lia a ROM)
+- [ ] 0.7 Teste em hardware real e em outras configurações de memória (512 KB e 1 MB, turbo R)
+- [ ] 0.8 Gravação de arquivos na camada de plataforma (criar, escrever, renomear, apagar) — necessário para a sub-fase 1.2
 
-### Fase 1 — dBASE II+ Core & Compatibility (CLI)
-- parser de comandos
-- leitura/escrita de .dbf
-- USE, DISPLAY, LIST, APPEND, REPLACE, DELETE, PACK, LOCATE, STORE, DO WHILE, IF...ENDIF
+## 4. Fase 1 — Núcleo dBASE II+ (CLI)
 
-### Fase 2 — dBASE II++ Visual Revolution (TUI & Assistant)
-- TUI em 80 colunas
-- janelas, cores e menu estilo Assistant
-- @ linha,coluna SAY/GET
-- HELP contextual
+### 1.1 DBF somente leitura (Marco 1)
+- [~] Engine `dbf.c`: cabeçalho, descritores, `Dbf_Open/Close/Goto/Skip`, marca de exclusão, validações (`DBF_ERR_*`)
+- [~] Comandos: `USE`, `LIST [STRUCTURE]`, `DISPLAY [STRUCTURE|ALL]`, `GO TOP|BOTTOM|n`, `SKIP [n]`, `CLEAR`, `VER`, `HELP`, `QUIT`
+- [~] Exibição de tipos C, N, L, D e M (memo apenas como texto "memo"); `LIST` com pausa por tela
+- [~] Banco de teste `project/data/CLIENTES.DBF` (5 registros, 1 excluído) gerado por `make_sample_dbf.ps1`
+- [ ] **Validar tudo no openMSX** (próximo passo imediato)
+- [ ] Limites atuais: 32 campos, registro de até 256 bytes, só dBASE III 0x03/0x83 — decidir se amplia
+- [ ] `DISPLAY` com `FOR`, `RECORD n`, listas de campos (depende de 1.3)
+- [ ] `COUNT`, `SET DELETED ON/OFF`
 
-### Fase 3 — dBASE III- (B-Tree Indexing .ndx)
-- INDEX ON, SEEK, FIND, SET INDEX TO
-- árvore B em memória mapper
+### 1.2 Escrita segura (Marco 2)
+- [ ] Gravação na camada de plataforma (0.8)
+- [ ] `APPEND BLANK`, `REPLACE`, `DELETE`, `RECALL`
+- [ ] Atualização segura do cabeçalho (contagem de registros, data) e marca 0x1A
+- [ ] `PACK` com arquivo temporário e recuperação após falha
+- [ ] `CREATE` (definição de estrutura) e `COPY STRUCTURE`
+- [ ] Testes de integridade (interrupção, disco cheio, somente leitura)
 
-### Fase 4 — dBASE III / III+ Full Features
-- SELECT 1, 2...
-- SET RELATION TO
-- memo (.dbt), data/hora, texto avançado
+### 1.3 Expressões e filtros (Marco 3)
+- [ ] Lexer e tipos de valor (C, N, L, D); numérico sem ponto flutuante (decimal fixo/BCD) — decidir
+- [ ] Operadores, funções básicas, `STORE` e variáveis de memória
+- [ ] Cláusulas `FOR`/`WHILE`, `SET FILTER TO`
+- [ ] `LOCATE` / `CONTINUE`, `COUNT`, `SUM`, `AVERAGE`
+- [ ] Substituir a tabela de comandos por tokens/lexer (ver SPEC 6.6)
 
----
+### 1.4 Programas `.PRG` e bytecode (Marco 4)
+- [ ] Parser e compilador para bytecode; máquina virtual
+- [ ] `DO`, `DO WHILE/ENDDO`, `IF/ELSE/ENDIF`, `RETURN`, `PROCEDURE`, `PARAMETERS`
+- [ ] Execução de arquivos `.PRG`; modo silencioso
 
-## 4. Estado atual do projeto
+### 1.5 Compatibilidade dBASE II clássico
+- [ ] `[?]` Variante DBF versão 0x02 (cabeçalho de 8 bytes) e migração para III
+- [ ] Golden files comparados byte a byte
 
-### Situação real verificada
-O projeto está em fase inicial, praticamente como um shell de execução com tela inicial.
+## 5. Fase 2 — Interface MSX (Marco 6)
+- [ ] Editor de linha melhor: setas, Home/End, histórico
+- [ ] Janelas, menus, caixas, barra de estado, cores configuráveis
+- [ ] `@ lin,col SAY/GET`, `BROWSE`, `EDIT`, `APPEND` em formulário
+- [ ] Menu estilo Assistant; `HELP <comando>` e F1
+- [ ] Mouse opcional; 40/80 colunas
+- [ ] Manter sempre o modo console
 
-Itens já existentes:
-- estrutura base do repositório
-- build do projeto com MSXgl e SDCC
-- script de compilação via build.bat
-- executável nativo para MSX-DOS 2
-- tela de identificação com texto e validação de MSX 2+
-- saída com ESC para sair
+## 6. Fase 3 — Índices NDX (Marco 5)
+- [ ] Leitura de índice simples, `FIND`/`SEEK`
+- [ ] `INDEX ON`, `SET INDEX TO`, atualização após alterações, `REINDEX`
+- [ ] Cache de páginas no Memory Mapper (nunca o índice inteiro)
+- [ ] Validação e reconstrução
 
-Itens ainda inexistentes:
-- prompt do ponto (.)
-- parser CLI
-- leitura real de DBF
-- estruturas de dados de tabela
-- comandos SQL/dBASE command set
-- gestão de arquivos .dbf/.ndx/.dbt
-- TUI de janelas
-- índice e cache em memória mapper
-- suporte a SD / DOS 2 em nível de aplicação
-
-### Status atual resumido
-- Estado funcional: boot shell / launcher
-- Estado do núcleo DB: 0%
-- Estado da compatibilidade dBASE II: 0%
-- Estado das interfaces: 0%
-- Estado da fase de índice e queries: 0%
-
----
-
-## 5. Regras para desenvolvimento e IA
-
-As regras principais do projeto, conforme [SPEC.md](SPEC.md), são:
-
-1. Priorizar eficiência em Z80 e uso de tipos menores sempre que útil.
-2. Evitar alocação dinâmica pesada; preferir buffers estáticos e memória mapper.
-3. Desenvolver em C compatível com SDCC.
-4. Usar MSXgl para VRAM, paginação e hardware alvo.
-5. Tratar manipulação direta de hardware via macros e blocos __asm comentados.
-
----
-
-## 6. O que foi validado nesta sessão
-
-### Arquivos-chave lidos
-- [SPEC.md](SPEC.md)
-- [README.md](README.md)
-- [main.c](main.c)
-
-### Observação importante
-A partir do código atual, o programa apenas:
-- detecta versão MSX
-- se MSX1, mostra erro e exige ESC
-- em MSX2+ entra em modo texto 80 colunas
-- exibe um banner inicial
-- aguarda ESC para sair
-
-Portanto, a base de execução existe, mas o sistema de banco ainda não foi implementado.
-
-### Decisões de implementação
-- O próximo foco não é interface visual, e sim núcleo de dados.
-- A arquitetura de memória e o uso do Memory Mapper devem ser tratados logo no início para evitar refatoração futura.
-- A compatibilidade com dBASE II+ deve vir antes de qualquer recurso do dBASE III+.
-
-### Bloqueios atuais
-- sem prompt de comando
-- sem parser
-- sem tabelas .dbf em funcionamento
-- sem suporte a índice
-- sem validação em emulador real com dados de banco
+## 7. Fase 4 — dBASE III/III+ (Marco 7)
+- [ ] Mais áreas de trabalho (`SELECT`), aliases, `SET RELATION TO`
+- [ ] Campo Date completo, Memo/DBT
+- [ ] Relatórios (`REPORT`, `LABEL`), `SORT`, `TOTAL`, `JOIN`
+- [ ] Overlays e uso do Memory Mapper para código/dados
 
 ---
 
-## 7. Roadmap prático recomendado
+## 8. Estado do código (referência rápida)
 
-### Próximo bloco: Fundação de dados
-- definir estrutura de cabeçalho DBF clássico
-- definir tipos de campo e limites
-- implementar leitura/escrita de registros fixos
-- validar compatibilidade com tabelas simples
+| Arquivo | Papel |
+|---|---|
+| `project/main.c` | entrada: detecta plataforma, inicia console, roda o prompt |
+| `project/console.c/.h` | tela 80x24, rolagem, teclado, edição de linha |
+| `project/prompt.c/.h` | laço do prompt `.` |
+| `project/commands.c/.h` | tabela e execução de comandos (transitória até o lexer) |
+| `project/dbf.c/.h` | engine DBF somente leitura (sem UI) |
+| `project/platform.c/.h` | MSX-DOS, Memory Mapper, arquivos |
+| `project/project_config.js` | módulos do projeto, bibliotecas, `DiskFiles` |
+| `project/msxgl_config.h` | opções do MSXgl |
+| `project/data/` | banco de teste e script gerador |
 
-### Bloco seguinte: parser e comandos
-- prompt do ponto
-- lexer/parser simples
-- comandos USE, LIST, DISPLAY, APPEND, REPLACE
-- tratamento de strings, nums e datas
+Regra: nova funcionalidade de dados entra em módulo próprio sem depender de UI; só `platform.c` fala com MSX-DOS.
 
-### Bloco de interface
-- modo de terminal 80 colunas
-- janelas de comando e resultados
-- help e menu assistente
+## 9. Decisões tomadas (log)
+- 2026-10-24: projeto clean-room, C + SDCC + MSXgl, alvo MSX-DOS 2.
+- 2026-10-25/26: DBASE_MSX_DIRETRIZES incorporado ao SPEC; documentos vivos definidos (SPEC / OUTLINE / resume.txt).
+- 2026-10-26: primeira variante DBF suportada é dBASE III 0x03 (dBASE II 0x02 fica para depois).
+- 2026-10-26: leitura de teclas via MSX-DOS DIRIN; cursor da BIOS desligado; fonte embutida.
+- 2026-10-26: Marco 0 declarado concluído; Marco 1 implementado, falta validação.
+- 2026-10-26: **mínimo absoluto 512 KB de mapper; alvo 1024 KB** (128/256 KB não são mais objetivo).
+- 2026-10-26: **vídeo e teclado sem console do MSX-DOS/CP/M**: VDP direto e BIOS; DOS só para arquivos.
+- 2026-10-26: primeira extensão MSX implementada (`SET COLOR TO`) antes da próxima fase.
+- 2026-10-26: versionamento `X.Y`; `X` marca marcos com codinomes Unix/C e `Y` avança em builds bem-sucedidos (pausável com `-KeepVersion`). Primeiro release: `1.2 Shell`.
 
-### Bloco de índice e performance
-- memória mapper
-- cache de registros / leitura sequencial otimizada
-- B-tree básico para .ndx
+## 10. Backlog e ideias (adicionar aqui conforme surgirem)
+- Ferramenta no PC (host) para ler/validar DBF e comparar golden files.
+- Testes da engine DBF fora do MSX (camada `platform` permite).
+- Medir RAM residente e tempo de `LIST` em emulador e hardware real.
+- Decidir representação de Numeric (BCD x decimal fixo).
+- Nome definitivo do projeto.
 
-### Bloco de expansão
-- relaçao entre tabelas
-- memo (.dbt)
-- multi-SELECT e área de trabalho
-
----
-
-## 8. Checklist de projeto
-
-### Feito
-- [x] estrutura e organização do repo
-- [x] leitura do spec e alinhamento arquitetural
-- [x] build base do executável MSX-DOS 2
-- [x] banner inicial com detecção de MSX 2+
-- [x] saída controlada com ESC
-
-### Em progresso
-- [ ] análise profunda do formato .dbf
-- [ ] design da memória e buffers de leitura
-- [ ] parser de comandos dBASE II+
-- [ ] engine de tabela
-
-### Faltando
-- [ ] tabela de campos e tipos
-- [ ] import/export de .dbf
-- [ ] indexação
-- [ ] TUI
-- [ ] comandos avançados do dBASE III+
-- [ ] validação em emulador real
-
-### Ordem imediata de execução
-1. Definir estruturas de cabeçalho DBF e tipos de campo.
-2. Implementar leitura e gravação em memória.
-3. Criar prompt e parser simples.
-4. Validar uso de USE/LIST/DISPLAY/APPEND.
-5. Estender para DELETE, REPLACE e PACK.
-6. Só então avançar para TUI e índices.
-
----
-
-## 9. Notas para continuidade em outro PC ou outra IA
-
-- O projeto parte de uma base limpa, com foco em compatibilidade e evolução.
-- O arquivo [SPEC.md](SPEC.md) é a fonte principal de arquitetura e requisitos.
-- a base atual é um skeleton operacional, não um sistema funcional de banco.
-- o próximo passo lógico é implementar o núcleo de leitura de DBF e a CLI do dBASE II+ antes de tocar em TUI ou índice.
-- recomenda-se manter todos os arquivos de documentação em português para contexto de desenvolvimento local e para futuras IA.
-
----
-
-## 10. Resumo executivo
-
-Este é um projeto de engenharia de software para MSX 2+ pensado como ambiente de banco de dados compatível com dBASE II+ e evolutivo para dBASE III/III+, utilizando C + SDCC + MSXgl. A especificação é clara, mas a implementação atual ainda corresponde ao shell inicial do programa. A prioridade imediata é construir o núcleo de armazenamento e comandos antes de avançar para a interface visual, índices e recursos do dBASE III+.
+## 11. Rotina de fim de sessão
+1. Compilar e, se possível, testar no openMSX.
+2. Atualizar este OUTLINE (marcar itens, registrar decisões).
+3. Atualizar o SPEC se houve decisão ou fato técnico novo.
+4. Atualizar o `resume.txt` (feito hoje + próximos passos).

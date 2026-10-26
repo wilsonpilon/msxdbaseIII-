@@ -1,42 +1,73 @@
-MSX dBASE III- / dBASE II+ - RESUMO DO DIA
-Data: 2026-10-24
-Status: shell inicial / base operacional sem engine de banco
+MSX dBASE III- / dBASE II+  -  RESUMO DO PROJETO E DO DIA
+Ultima atualizacao: 2026-10-26
 
-Resumo do que foi feito
-- Leitura do arquivo SPEC.md para alinhar arquitetura, metas e fases do projeto.
-- Leitura do README.md para confirmar estado funcional do projeto.
-- Leitura do arquivo main.c para verificar o que já existe em execução.
-- Confirmação de que o projeto está em estado inicial de shell, sem parser, sem DBF funcional e sem engine de banco implementado.
-- Registro do escopo em OUTLINE.md como documento vivo de acompanhamento.
+=== O PROJETO ===
+Ambiente xBase nativo para MSX2/2+/turbo R: nucleo compativel com dBASE II, recursos
+selecionados do dBASE III. C + SDCC + MSXgl, MSX-DOS 2, Memory Mapper.
+Projeto de estudo: codigo modular e muito comentado.
+Documentos: SPEC.md (especificacao viva), OUTLINE.md (progresso por fase/sub-fase),
+este resume.txt (retomada rapida em outro PC/IA). DBASE_MSX_DIRETRIZES.md foi
+incorporado ao SPEC (secao 6) e fica so como historico.
 
-Estado atual verificado
-- Base compilável do executável MSX-DOS 2 existente.
-- Programa inicial faz detecção de MSX 2+.
-- Em MSX1 exibe mensagem de erro e aguarda ESC.
-- Em MSX2+ entra em modo texto 80 colunas.
-- Exibe banner: "MSX dBASE II+" e "Clean-room database environment".
-- Ainda não possui:
-  * prompt de comando
-  * parser dBASE
-  * leitura real de .dbf
-  * estrutura de tabela
-  * comandos USE / APPEND / REPLACE / LIST / PACK
-  * índices .ndx
-  * TUI e assistente
+=== COMO RETOMAR (outro PC / outra IA) ===
+1. Ler este arquivo, depois OUTLINE.md e SPEC.md (secoes 6, 7 e 8).
+2. Compilar: .\build.ps1 (na raiz). FECHAR o openMSX antes, senao a copia do .dsk falha.
+3. Executar: openmsx -machine Boosted_MSX2_EN -ext msxdos2 -diska .\project\emul\dsk\DOS2_msxdbase.dsk
+4. Gerar o DBF de teste (se faltar): pwsh project\data\make_sample_dbf.ps1
+5. Teste basico no prompt: ver / use clientes / list / display structure / go 3 / display / skip -1 / go bottom / quit
 
-Fase projetada atual
-- Fase 0 / shell inicial (base operacional)
-- Próxima etapa: Fase 1 — núcleo de compatibilidade dBASE II+
+=== ESTADO ATUAL ===
+Fase 0 (infraestrutura): CONCLUIDA.
+Fase 1.1 (DBF somente leitura): implementada e COMPILANDO, mas AINDA NAO TESTADA no emulador.
+Versao preparada: 1.2 Shell (tag 1.2). O comando VER exibe a versao do executavel;
+builds bem-sucedidos incrementam Y automaticamente; use .\build.ps1 -KeepVersion
+durante testes repetidos.
+Codigo em project/: main.c, console.c, prompt.c, commands.c, dbf.c, platform.c (+ .h),
+data/CLIENTES.DBF. Modulos e libs registrados em project/project_config.js.
 
-Trabalho imediato
-1. Definir a estrutura de cabeçalho .dbf e tipos de campo.
-2. Implementar leitura e gravação de registros fixos.
-3. Criar um prompt de comando e parser mínimo.
-4. Validar USE, DISPLAY, LIST, APPEND, REPLACE, DELETE e PACK.
-5. Só então avançar para TUI e índices.
+=== FEITO HOJE (2026-10-26) ===
+- Corrigido congelamento inicial (ROM principal nao existe sob MSX-DOS): removida leitura
+  de versao pela ROM, fonte embutida, CheckVersion=false.
+- Corrigido texto espacado (PRINT_WIDTH_1 / PRINT_HEIGHT_1) e cursor fixo da BIOS (CSRSW=0).
+- Console 80x24 com rolagem e edicao de linha; prompt "."; HELP/CLEAR/QUIT.
+- Marco 0: camada platform (DOS, Memory Mapper, arquivos por handle) e comando VER.
+- Marco 1: engine DBF (dBASE III 0x03) e comandos USE, LIST, DISPLAY, GO, SKIP, STRUCTURE.
+- Banco de teste CLIENTES.DBF (5 registros, 1 excluido) + script gerador.
+- Documentacao reorganizada: SPEC (completo), OUTLINE (progresso), resume.txt.
+- Console reescrito: VDP direto + copia da tela em RAM (rolagem rapida) e teclado pela BIOS
+  (CHSNS/CHGET via CALSLT) para eliminar o cursor fixo; compilou, FALTA VALIDAR no emulador.
+- Novo comando SET COLOR TO W+/B (estilo dBASE) ou SET COLOR TO 15,4 (paleta MSX); alias COLOR.
 
-Observações importantes
-- O arquivo SPEC.md é a fonte principal de arquitetura e requisitos.
-- O projeto foi pensado para MSX 2+, mapper de 1024, MSX-DOS 2, SD, IDE e Nextor.
-- A implementação precisa priorizar eficiência Z80, uso de buffers estáticos e compatibilidade SDCC/MSXgl.
-- O objetivo imediato é construir o motor de dados e CLI antes de qualquer interface visual.
+=== PROXIMOS PASSOS (proxima sessao) ===
+1. Validar no openMSX: (a) o cursor fixo sumiu, (b) SET COLOR TO, (c) o Marco 1 (comandos acima);
+   corrigir o que aparecer.
+   Conferir: alinhamento das colunas do LIST, registro excluido marcado com *, datas MM/DD/AA,
+   pausa do LIST, mensagens de erro (USE de arquivo inexistente).
+2. Camada de plataforma: criar/escrever/renomear/apagar arquivos (item 0.8).
+3. Marco 2: APPEND BLANK, REPLACE, DELETE, RECALL, PACK seguro (arquivo temporario).
+4. Deixar para depois: lexer/expressoes (Marco 3), PRG/bytecode (Marco 4).
+5. Itens pequenos: deteccao MSX1 x MSX2 sem ler a ROM; DISPLAY/LIST com FOR.
+
+=== VERSIONAMENTO ===
+- X representa marco funcional e usa codinome de conceito Unix/C classico, sem nomes de pessoas.
+- Y incrementa a cada build bem-sucedido; pode ser mantido durante testes com -KeepVersion.
+- Tag: X.Y; titulo do release: <codinome>: descricao curta.
+- RELEASE.md guarda notas completas; Changelog.MD resume cada versao.
+
+=== DECISOES / PONTOS EM ABERTO ===
+- Primeira variante DBF: dBASE III 0x03. dBASE II classico (0x02) fica para depois.
+- Limites atuais: 32 campos, registro de ate 256 bytes.
+- Em aberto: ordem UI x indices (SPEC coloca UI antes), Numeric em BCD ou decimal fixo,
+  nome definitivo do projeto.
+- DECIDIDO: minimo absoluto 512 KB de Memory Mapper; alvo real 1024 KB (nao projetar para 128/256 KB).
+- DECIDIDO: video e teclado NUNCA pelo console do MSX-DOS/CP/M: VDP direto e BIOS.
+
+=== LICOES TECNICAS (detalhes no SPEC secao 7) ===
+- Sob MSX-DOS a ROM principal NAO esta mapeada: nao ler variaveis/fonte da BIOS.
+- msxgl_config.h precisa de PRINT_USE_TEXT, PRINT_WIDTH_1, PRINT_HEIGHT_1.
+- Teclado: DIRIN do MSX-DOS (07h); desligar cursor da BIOS (0xFCA9) e restaurar ao sair.
+
+=== PREFERENCIAS DO USUARIO ===
+Estudo/aprendizado (nao lancamento); codigo modular com muitos comentarios; documentacao
+em portugues; um marco por vez, sempre compilavel; atualizar OUTLINE/SPEC/resume.txt a
+cada sessao.

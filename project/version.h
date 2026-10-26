@@ -1,0 +1,8 @@
+#ifndef PROJECT_VERSION_H
+#define PROJECT_VERSION_H
+
+#define APP_VERSION_MAJOR 1
+#define APP_VERSION_MINOR 2
+#define APP_RELEASE_CODENAME "Shell"
+
+#endif
