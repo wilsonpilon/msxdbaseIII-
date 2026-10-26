@@ -1,0 +1,1 @@
+﻿NDFramePage.OnPageTitleLoaded("File:pcm/pcmenc.h","pcmenc.h");NDSummary.OnSummaryLoaded("File:pcm/pcmenc.h",[["C/C++","C"]],[["Functions","Function"],["Groups","Group"]],[[353,0,1,"Functions","Functions"],[354,0,0,"PCM_Play_8K","PCM_Play_8K"],[355,0,0,"PCM_Play_11K","PCM_Play_11K"],[356,0,0,"PCM_Play_22K","PCM_Play_22K"],[357,0,0,"PCM_Play_44K","PCM_Play_44K"]]);

@@ -1,0 +1,7 @@
+#ifndef MSXGL_CONFIG_H
+#define MSXGL_CONFIG_H
+
+#define VDP_USE_MODE_T2 TRUE
+#define INPUT_USE_KEYBOARD TRUE
+
+#endif

@@ -1,0 +1,1 @@
+﻿NDFramePage.OnPageTitleLoaded("File:arkos/aky_6ch_player.h","aky_6ch_player.h");NDSummary.OnSummaryLoaded("File:arkos/aky_6ch_player.h",[["C/C++","C"]],[["Functions","Function"],["Groups","Group"]],[[7,0,1,"Functions","Functions"],[8,0,0,"AKY6ch_Play","AKY6ch_Play"],[9,0,0,"AKY6ch_Update","AKY6ch_Update"]]);
