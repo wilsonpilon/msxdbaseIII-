@@ -1,5 +1,20 @@
 # Releases
 
+## 1.3 Shell: leitura inicial de DBF II MSX
+
+Titulo do release GitHub: `Shell: leitura inicial de DBF II MSX`.
+
+- Leitura da variante DBF II MSX (`0x02`): cabeçalho fixo de 521 bytes e descritores de 16 bytes.
+- Inclusão de `PESSOAL.DBF`, criado no dBASE II para MSX, na imagem de teste.
+- Mantida a leitura DBF III (`0x03/0x83`) para fixture e interoperabilidade.
+- Adicionadas operações de arquivo na camada platform: abrir para escrita, criar, escrever, renomear e apagar.
+- Trocada a tabela de caracteres externa por fonte ASCII embutida do MSXgl, corrigindo pontuação incompatível e o desenho do cursor.
+- Build SDCC/MSX-DOS 2 e geração de DSK concluídos.
+
+Estado conhecido: a leitura DBF II, a fonte e o cursor ainda precisam de validação visual/funcional no openMSX. As operações de escrita DBF e `PACK` não estão implementadas; padding/EOF da amostra original ainda precisam ser entendidos.
+
+Tag: `1.3`
+
 ## 1.2 Shell: console, comandos e leitura de DBF
 
 Titulo do release GitHub: `Shell: console, comandos e leitura de DBF`.

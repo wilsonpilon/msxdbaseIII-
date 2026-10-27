@@ -1,7 +1,7 @@
 # SPEC.md - Especificação Técnica: MSX dBASE Clone (dBASE II+ / III- for MSX)
 
 ## 1. Visão Geral do Projeto
-O objetivo deste projeto é desenvolver um gerenciador de banco de dados e ambiente de programação relacional totalmente compatível com o **dBASE II+** (padrão CP/M), evoluindo progressivamente para suportar recursos do **dBASE III / III+** (padrão MS-DOS/xBase).
+O objetivo deste projeto é desenvolver um gerenciador de banco de dados e ambiente de programação relacional com uma implementação 100% compatível com o **dBASE II Plus para MSX** como núcleo de referência, evoluindo separadamente para suportar recursos do **dBASE III / III+** (padrão MS-DOS/xBase). Compatibilidade com a edição CP/M e seus arquivos deve ser preservada quando coincidir com o comportamento documentado para MSX, mas não substitui a edição MSX como referência do núcleo compatível.
 
 O software é projetado especificamente para rodar no **MSX 2+** com armazenamento massivo (HD/SD) via **MSX-DOS 2**, otimizado para CPUs Z80 operando em overclock (7 a 10 MHz) e utilizando até 512 KB de RAM Mapeada (Memory Mapper).
 
@@ -39,65 +39,44 @@ Como o Z80 possui barramento de endereçamento de 16 bits (64 KB visíveis por v
 * **Página 3 (`0xC000 - 0xFFFF`):** RAM do sistema MSX-DOS, Pilha (*Stack*), Variáveis Globais da Aplicação.
 
 ### 3.2 Formato de Dados e Compatibilidade
-* **Estrutura `.dbf` (dBASE II):**
-  * Cabeçalho clássico dBASE II (registros de tamanho fixo, definição de tipos de campos N/C/L, limite de 32 campos por registro).
-  * Compatibilidade byte a byte com arquivos criados no dBASE II para CP/M.
-* **Indexação (Fases Iniciais vs. Avançadas):**
-  * *Fase 1/2:* Varredura sequencial em memória otimizada com cache em RAM Mapper.
-  * *Fase 3/4:* Implementação de Árvore B (*B-Tree*) compatível com o formato de índice `.ndx` (dBASE III).
+* **Estrutura `.dbf` (dBASE II Plus para MSX):**
+  * Registros de tamanho fixo e campos Character, Numeric e Logical; aplicar os limites publicados especificamente para a edição MSX.
+  * O layout principal da variante MSX foi confirmado em `resource/PESSOAL.DBF`; padding/EOF e semântica de escrita ainda precisam de testes antes de habilitar mutações. Compatibilidade com arquivos CP/M só será declarada quando validada separadamente.
+* **Indexação:** índices `.NDX` e comandos documentados no manual MSX pertencem ao núcleo dBASE II; formatos de outras versões são extensões posteriores.
 
 ---
 
 ## 4. Roteiro de Desenvolvimento (Fases de Evolução)
 +-----------------------------------------------------------+
-| FASE 1: dBASE II+ Core & Compatibility (CLI)              |
-| - Parser de comandos + Leitura/Escrita de .dbf            |
+| FASE 1: dBASE II Plus para MSX (compatibilidade)           |
+| - DBF MSX, comandos, NDX e modo programável                |
 +-----------------------------------------------------------+
 |
 v
 +-----------------------------------------------------------+
-| FASE 2: dBASE II++ Visual Revolution (TUI & Assistant)     |
-| - Modo Texto 80 col, Janelas, Cores, Form @...SAY/GET      |
-| - Menu estilo "Assistant" (inspirado no dBASE III+)       |
-| - Sistema de HELP expansivo (F1)                          |
+| FASE 2: Extensões dBASE III / III+                         |
+| - Date, Memo, áreas adicionais e relações                  |
 +-----------------------------------------------------------+
 |
 v
 +-----------------------------------------------------------+
-| FASE 3: dBASE III- (B-Tree Indexing .ndx)                 |
-| - Comandos INDEX ON, SEEK, FIND, SET INDEX TO             |
-| - Motor de busca relacional acelerado                     |
-+-----------------------------------------------------------+
-|
-v
-+-----------------------------------------------------------+
-| FASE 4: dBASE III / III+ Full Features                    |
-| - Áreas de trabalho simultâneas (SELECT 1, 2...), RELATE  |
-| - Suporte opcional a campos de Memo (.dbt)                |
+| FASE 3: Interface MSX avançada                             |
+| - TUI, menus, editor e assistência visual                  |
 +-----------------------------------------------------------+
 
 ### Detalhamento das Fases:
 
-#### **Fase 1: `dBASE II+` (Núcleo de Compatibilidade)**
-* Implementar o parser CLI com prompt do ponto (`.`).
-* Compatibilidade 100% com scripts `.prg` e tabelas `.dbf` do dBASE II de CP/M.
-* Suporte aos comandos estruturais: `USE`, `DISPLAY`, `LIST`, `APPEND`, `REPLACE`, `DELETE`, `PACK`, `LOCATE`, `STORE`, `DO WHILE`, `IF...ENDIF`.
+#### **Fase 1: `dBASE II Plus para MSX` (compatibilidade)**
+* Meta de compatibilidade 100% com os comandos implementados na edição MSX, seus modos interativo e programável e seus formatos; usar a matriz da seção 6.19 para acompanhar evidências e lacunas.
+* Priorizar DBF MSX, comandos de dados, expressões, arquivos `.PRG` e índices `.NDX` documentados para essa edição.
 
-#### **Fase 2: `dBASE II++` (Interface & Usabilidade)**
-* Implementação da TUI gráfica via caracteres de quadro em modo de 80 colunas.
-* Criação de um menu interativo de topo (estilo *Assistant* do dBASE III Plus) navegável via setas do teclado MSX.
-* Formulários de tela aprimorados para o comando `APPEND` e suporte avançado para `@ <lin>,<col> SAY ... GET`.
-* Sistema de ajuda contextual estendido (`HELP <comando>` ou tecla `F1`).
+#### **Fase 2: Extensões `dBASE III / III+`**
+* Adicionar recursos posteriores ao dBASE II MSX somente depois de o núcleo compatível estar coberto por testes.
+* Múltiplas áreas de trabalho, relações e campos Memo/DBT são extensões identificadas, não requisitos do núcleo.
 
-#### **Fase 3: `dBASE III-` (Motor de Índices)**
-* Suporte à estrutura de índices baseados em Árvore B (`.ndx`).
-* Comandos de busca ultrarrápidos: `INDEX ON`, `SEEK`, `FIND`.
-* Otimização de busca em memória aproveitando os 512 KB de RAM Mapper como cache de nós da árvore B.
+#### **Fase 3: Interface MSX avançada**
+* Evoluir menus, editor, janelas e assistência visual sem alterar silenciosamente o comportamento compatível.
 
-#### **Fase 4: `dBASE III+` (Recursos Avançados)**
-* Múltiplas áreas de trabalho abertas (`SELECT 1`, `SELECT 2`).
-* Vinculação entre tabelas (`SET RELATION TO`).
-* Funções estendidas de manipulação de data, hora e manipulação de texto.
 
 ---
 
@@ -120,12 +99,12 @@ Ao gerar código para este repositório, os assistentes de IA devem seguir estri
 > Esta parte incorpora o antigo `DBASE_MSX_DIRETRIZES.md`. Em conflito com as seções 2 e 3, **prevalece esta seção**, que é mais recente. O arquivo original foi mantido apenas como histórico.
 
 ### 6.1 Visão
-Um **xBase nativo para MSX** ("dBASE 2.5/3 para MSX"): compatível com dBASE II onde viável, com recursos selecionados do dBASE III, usando MSX2/2+/turbo R, MSX-DOS 2, Memory Mapper e armazenamento moderno, com interface própria do MSX. É um ambiente integrado de banco de dados e programação, não apenas um visualizador de DBF. Não é um porte do dBASE II+ para CP/M nem uma reprodução integral do dBASE III.
+Um **xBase nativo para MSX** ("dBASE 2.5/3 para MSX"): implementa um núcleo 100% compatível com o dBASE II Plus para MSX conforme as fontes da seção 6.19, e adiciona recursos selecionados do dBASE III como extensões identificáveis. Usa MSX2/2+/turbo R, MSX-DOS 2, Memory Mapper e armazenamento moderno, com interface própria do MSX. É um ambiente integrado de banco de dados e programação, não apenas um visualizador de DBF. A edição MSX, e não uma implementação genérica de CP/M, define o comportamento-base compatível.
 
 ### 6.2 Decisões que permanecem explícitas
 1. Não portar literalmente o dBASE III.
 2. Não se limitar à experiência CP/M.
-3. Preservar compatibilidade xBase onde trouxer valor.
+3. Preservar como núcleo o comportamento documentado do dBASE II Plus para MSX; identificar e documentar à parte recursos do CP/M, dBASE III e extensões próprias.
 4. Escolher recursos do dBASE III por utilidade e custo.
 5. Usar Memory Mapper e modularização, nunca um executável monolítico.
 6. Separar engine, linguagem, UI e plataforma.
@@ -168,16 +147,19 @@ Módulos planejados: `core` (runtime, erros, valores), `parser` (lexer, parser, 
 Caminho: `.PRG` → lexer → tokens → parser → bytecode compacto → máquina virtual → engine. No modo interativo, cada linha é compilada para um buffer temporário e executada. Evitar cadeias de comparação de strings para comandos (a tabela de comandos atual é transitória, até o lexer existir). `.PRG` deve evoluir para: sequências, variáveis, expressões, IF/DO WHILE, procedimentos, parâmetros e retorno.
 
 ### 6.7 Tipos de dados
-Fase 1: Character, Numeric, Logical. Fase 2: Date. Fase 3: Memo (`.DBT`). Evitar ponto flutuante; avaliar decimal fixo ou BCD para Numeric. Tratar largura, casas decimais, espaços, sinal, overflow, vazio, comparação e conversão texto/número.
+Núcleo MSX: Character, Numeric, Logical. Date e Memo (`.DBT`) ficam para extensões posteriores, se confirmados como recursos de outra versão. Evitar ponto flutuante; avaliar decimal fixo ou BCD para Numeric. Tratar largura, casas decimais, espaços, sinal, overflow, vazio, comparação e conversão texto/número.
 
 ### 6.8 Arquivos DBF
-- **Variante implementada primeiro: dBASE III sem memo (versão 0x03; 0x83 também aceita no cabeçalho)**, por ser o formato mais documentado e interoperável. O suporte ao dBASE II clássico (versão 0x02, cabeçalho de 8 bytes) continua exigido pela seção 3.2 e fica para um marco próprio.
+- **Variante-alvo do núcleo: dBASE II Plus para MSX.** A engine lê DBF II MSX (`0x02`) e mantém leitura dBASE III (`0x03/0x83`) para a fixture de desenvolvimento/interoperabilidade.
+- **Layout DBF II confirmado** com `resource/PESSOAL.DBF`: cabeçalho fixo de 521 bytes; versão `0x02` no byte 0; contagem de registros `u16` little-endian nos bytes 1-2; data MM/DD/YY nos bytes 3-5; tamanho do registro `u16` nos bytes 6-7; 32 descritores de 16 bytes a partir do byte 8; byte 520 igual a `0x0D` quando os 32 descritores são usados, senão `0x00`. Cada descritor tem nome nos bytes 0-10, tipo no 11, tamanho no 12, endereço de memória nos 13-14 (não persistente; ignorar) e casas decimais no 15. Os registros começam no byte 521 e incluem o byte de exclusão seguido pelos dados dos campos.
+- A amostra tem 6 registros de 36 bytes, campos `NOME C(15)`, `CARGO C(10)`, `SALARIO N(5)`, `DATADM C(5)`, e comprimento físico de 1024 bytes. O uso de EOF e o significado do padding após os registros ainda precisam ser confirmados; não interpretar os bytes extras como registros.
+- O leitor aceita DBF II MSX e DBF III para a fixture de desenvolvimento/interoperabilidade. Não inferir o layout DBF II a partir do DBF III.
 - Cuidados: variante exata, cabeçalho, descritores, tamanho do registro, marca de exclusão, fim lógico (0x1A), codificação, integridade após interrupção, gravação segura do cabeçalho e da contagem de registros.
 - Segurança em operações destrutivas (`PACK`, `SORT`, `INDEX`, reconstrução, memo): usar arquivos temporários, validar espaço livre, preservar o original até o fim, permitir recuperação e não atualizar metadados críticos cedo demais.
 - Limites atuais da engine: 32 campos e registro de até 256 bytes (buffer estático). Ampliar quando houver necessidade e medição de RAM.
 
 ### 6.9 Índices NDX
-Etapa 1: leitura de índice simples, `FIND`/`SEEK`, navegação ordenada, uma chave. Etapa 2: criação, atualização após APPEND/REPLACE/DELETE, vários índices, expressões de chave. Etapa 3: cache, reconstrução, detecção de inconsistência, validação da árvore. Nunca carregar o índice inteiro na RAM: cache de páginas e leitura sob demanda.
+Índices `.NDX` e os comandos `INDEX`, `FIND`, `REINDEX` e `SET INDEX` fazem parte do núcleo quando documentados para dBASE II MSX. Implementar leitura, criação e atualização incremental com testes de conformidade; manter cache de páginas e leitura sob demanda, sem carregar o índice inteiro na RAM.
 
 ### 6.10 Versionamento e releases
 - Versão `X.Y`: `X` identifica um marco funcional com codinome inspirado em Unix/C clássicos; `Y` avança após cada compilação bem-sucedida.
@@ -224,6 +206,16 @@ Nomes propostos (não fechados): `SET COLOR TO`, `SET SCREEN TO`, `SET MOUSE ON`
 - `resume.txt`: resumo curto do projeto, do que foi feito na sessão e dos próximos passos, para retomar em outro PC ou com outra IA.
 - Em conflito, vale a decisão mais recente e explicitamente aprovada; corrigir os documentos para não divergirem.
 
+### 6.19 Referências de compatibilidade dBASE II para MSX
+As referências locais em `resource/` definem o comportamento do núcleo compatível com a edição MSX. Consultá-las ao especificar comandos, sintaxe, mensagens, fluxo interativo, execução de programas e formatos; não inferir diferenças da versão CP/M ou do dBASE III sem evidência.
+- `resource/Dbase 2 Plus Msx.pdf`: manual oficial do dBASE II Plus para MSX e fonte prioritária para comportamento e sintaxe.
+- `resource/dbase_ii_plus_interativo_para_msx.pdf`: referência complementar para detalhes do modo interativo.
+- `resource/dbase_programavel_msx.pdf`: referência complementar para detalhes do modo programável e da linguagem.
+
+Em caso de divergência, priorizar o manual oficial para o comportamento do produto e usar os livros para esclarecer detalhes dos modos interativo e programável. Registrar lacunas ou conflitos como questões em aberto, sem convertê-los silenciosamente em extensões. Recursos de dBASE III, CP/M ou próprios do projeto devem ser identificados separadamente. A meta de 100% é uma meta de conformidade verificável contra essas fontes, não uma afirmação de que já foi alcançada; cada comando e modo deve ganhar testes de conformidade à medida que for implementado.
+
+A matriz de evidências, limites e estado de implementação está em [DBASE_II_MSX_COMPATIBILITY.md](DBASE_II_MSX_COMPATIBILITY.md). Ela também registra as seções em que o manual oficial informa limitações específicas da versão MSX.
+
 ---
 
 ## 7. Notas Técnicas Verificadas (lições do ambiente MSXgl / MSX-DOS 2)
@@ -249,6 +241,6 @@ Fatos confirmados na prática; respeitar ao escrever código novo.
 - Requisitos mínimos definitivos (mínimo 512 KB e alvo 1 MB já decididos; falta definir MSX-DOS 1 e uso concreto da RAM extra).
 - Sintaxe completa da linguagem e formato do bytecode.
 - Política de extensões MSX; estratégia final de overlays.
-- **Ordem entre UI e índices:** a seção 4 coloca a interface (Fase 2) antes dos índices (Fase 3); as diretrizes (6.x e marcos) colocam índices antes da interface. Está seguida a ordem da seção 4 até decisão em contrário.
+- **Ordem de desenvolvimento:** completar primeiro a compatibilidade dBASE II Plus para MSX; implementar extensões dBASE III depois; a interface MSX avançada vem após o núcleo compatível.
 - Nome definitivo do projeto (provisório: "MSX xBASE").
 

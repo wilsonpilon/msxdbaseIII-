@@ -3,9 +3,8 @@
 
 #include "msxgl.h"
 
-// Engine DBF somente leitura (Marco 1). Nao depende de UI nem de MSX-DOS:
-// so usa a camada platform_*.
-// Formato suportado: dBASE III sem memo (versao 0x03). dBASE II (0x02) fica para depois.
+// Leitor DBF sem dependencias de UI ou MSX-DOS; usa apenas platform_*.
+// Le dBASE II MSX e mantem dBASE III para fixtures de desenvolvimento.
 
 #define DBF_MAX_FIELDS  32   // campos por arquivo (dBASE III permite 128)
 #define DBF_MAX_RECLEN  256  // tamanho maximo do registro, em bytes (buffer estatico)

@@ -11,6 +11,9 @@
 //   0..10 nome, 11 tipo, 16 tamanho, 17 decimais
 #define DBF_HDR_SIZE     32
 #define DBF_FIELD_SIZE   32
+#define DBF_II_HDR_SIZE  521
+#define DBF_II_FIELD_SIZE 16
+#define DBF_VER_II       0x02
 #define DBF_VER_III      0x03
 #define DBF_VER_III_MEMO 0x83
 #define DBF_HDR_END      0x0D
@@ -53,10 +56,60 @@ static u8 ReadHeader(Dbf* db)
 	u8 hdr[DBF_HDR_SIZE];
 	u8 desc[DBF_FIELD_SIZE];
 
-	if (PFile_Read(db->Handle, hdr, DBF_HDR_SIZE) != DBF_HDR_SIZE)
+	if (PFile_Read(db->Handle, hdr, 1) != 1)
 		return DBF_ERR_READ;
+
+	if (hdr[0] == DBF_VER_II)
+	{
+		if (PFile_Read(db->Handle, hdr + 1, 7) != 7)
+			return DBF_ERR_READ;
+
+		db->RecCount = Rd16(hdr + 1);
+		db->LastUpdate[0] = hdr[5];
+		db->LastUpdate[1] = hdr[3];
+		db->LastUpdate[2] = hdr[4];
+		db->RecLen = Rd16(hdr + 6);
+		db->HeaderLen = DBF_II_HDR_SIZE;
+
+		if ((db->RecLen < 2) || (db->RecLen > DBF_MAX_RECLEN))
+			return DBF_ERR_LIMITS;
+
+		u16 offset = 1;
+		db->FieldCount = 0;
+		for (u8 i = 0; i < DBF_MAX_FIELDS; i++)
+		{
+			if (PFile_Read(db->Handle, desc, DBF_II_FIELD_SIZE) != DBF_II_FIELD_SIZE)
+				return DBF_ERR_READ;
+			if (desc[0] == DBF_HDR_END)
+				break;
+
+			DbfField* f = &db->Fields[db->FieldCount++];
+			for (u8 j = 0; j < DBF_NAME_LEN - 1; j++)
+				f->Name[j] = desc[j];
+			f->Name[DBF_NAME_LEN - 1] = 0;
+			f->Type = desc[11];
+			f->Length = desc[12];
+			f->Decimals = desc[15];
+			f->Offset = offset;
+			offset += f->Length;
+		}
+
+		if (!PFile_Seek(db->Handle, DBF_II_HDR_SIZE - 1))
+			return DBF_ERR_READ;
+		if (PFile_Read(db->Handle, desc, 1) != 1)
+			return DBF_ERR_READ;
+		if (((db->FieldCount == DBF_MAX_FIELDS) && (desc[0] != DBF_HDR_END))
+			|| ((db->FieldCount < DBF_MAX_FIELDS) && (desc[0] != 0)))
+			return DBF_ERR_FORMAT;
+		if (offset != db->RecLen)
+			return DBF_ERR_FORMAT;
+		return DBF_OK;
+	}
+
 	if ((hdr[0] != DBF_VER_III) && (hdr[0] != DBF_VER_III_MEMO))
 		return DBF_ERR_FORMAT;
+	if (PFile_Read(db->Handle, hdr + 1, DBF_HDR_SIZE - 1) != DBF_HDR_SIZE - 1)
+		return DBF_ERR_READ;
 
 	db->LastUpdate[0] = hdr[1];
 	db->LastUpdate[1] = hdr[2];

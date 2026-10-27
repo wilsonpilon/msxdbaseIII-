@@ -1,6 +1,5 @@
 #include "console.h"
 #include "bios.h"
-#include "platform.h"
 #include "font/font_mgl_std0.h"
 
 // Video: acesso direto ao VDP, sem BIOS de tela nem MSX-DOS.
@@ -11,8 +10,6 @@
 #define KEY_DEL  0x7F
 
 #define CELLS    (CON_COLS * CON_ROWS)
-#define FONT_SIZE 2048
-#define FONT_CHUNK_SIZE 128
 
 // Posicao do cursor, em colunas/linhas de texto
 static u8 s_CurX;
@@ -22,11 +19,9 @@ static u8 s_CurY;
 // Permite rolar a tela na RAM e enviar tudo ao VDP numa unica escrita.
 static u8 s_Shadow[CELLS];
 
-// Faixa de caracteres da fonte; o padrao 0 e a celula em branco (fonte carregada com offset 1)
+// Faixa ASCII da fonte embutida do MSXgl.
 static u8 s_FontFirst;
 static u8 s_FontLast;
-static bool s_ResourceFontLoaded;
-static u8 s_FontChunk[FONT_CHUNK_SIZE];
 
 // Cursor da BIOS: desligado enquanto o programa roda
 static u8 s_OldCursorSw;
@@ -80,37 +75,9 @@ static u8 ShapeOf(u8 chr)
 {
 	if (chr <= ' ')
 		return 0;
-	if (s_ResourceFontLoaded)
-		return chr;
 	if ((chr < s_FontFirst) || (chr > s_FontLast))
 		return 0;
 	return chr - s_FontFirst + 1;
-}
-
-// Carrega os 256 padroes de 8 bytes da fonte diretamente para a tabela do SCREEN 0.
-static bool LoadResourceFont(void)
-{
-	u8 file = PFile_OpenRead("VRAM.DAT");
-	if (file == PFILE_INVALID)
-		return FALSE;
-	if (PFile_Size(file) != FONT_SIZE)
-	{
-		PFile_Close(file);
-		return FALSE;
-	}
-
-	for (u16 offset = 0; offset < FONT_SIZE; offset += FONT_CHUNK_SIZE)
-	{
-		if (PFile_Read(file, s_FontChunk, FONT_CHUNK_SIZE) != FONT_CHUNK_SIZE)
-		{
-			PFile_Close(file);
-			return FALSE;
-		}
-		VDP_WriteVRAM_16K(s_FontChunk, g_ScreenPatternLow + offset, FONT_CHUNK_SIZE);
-	}
-
-	PFile_Close(file);
-	return TRUE;
 }
 
 // Envia ao VDP um trecho da copia em RAM
@@ -146,15 +113,9 @@ void Console_Init(void)
 	Console_SetColor(15, 1);
 	VDP_FillVRAM_16K(0, 0x0000, 0x4000);      // limpa a VRAM
 
-	// Fonte customizada: o codigo do byte corresponde ao indice do padrao no SCREEN 0.
-	s_ResourceFontLoaded = LoadResourceFont();
-	if (!s_ResourceFontLoaded)
-	{
-		// Fallback embutido caso o arquivo de fonte nao esteja no disco.
-		Print_SetTextFont(g_Font_MGL_Std0, 1);
-		s_FontFirst = g_Font_MGL_Std0[2];
-		s_FontLast = g_Font_MGL_Std0[3];
-	}
+	Print_SetTextFont(g_Font_MGL_Std0, 1);
+	s_FontFirst = g_Font_MGL_Std0[2];
+	s_FontLast = g_Font_MGL_Std0[3];
 
 	Mem_Set(0, s_Shadow, CELLS);
 	s_CurX = 0;

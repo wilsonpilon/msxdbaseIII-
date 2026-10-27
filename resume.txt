@@ -1,5 +1,5 @@
 MSX dBASE III- / dBASE II+  -  RESUMO DO PROJETO E DO DIA
-Ultima atualizacao: 2026-10-26
+Ultima atualizacao: 2026-10-27
 
 === O PROJETO ===
 Ambiente xBase nativo para MSX2/2+/turbo R: nucleo compativel com dBASE II, recursos
@@ -18,36 +18,37 @@ incorporado ao SPEC (secao 6) e fica so como historico.
 
 === ESTADO ATUAL ===
 Fase 0 (infraestrutura): CONCLUIDA.
-Fase 1.1 (DBF somente leitura): implementada e COMPILANDO, mas AINDA NAO TESTADA no emulador.
-Versao preparada: 1.2 Shell (tag 1.2). O comando VER exibe a versao do executavel;
+Leitor DBF somente leitura: DBF II MSX (0x02) e DBF III (0x03/0x83); build validado, leitura DBF II ainda nao testada no openMSX.
+Versao preparada: 1.3 Shell (tag 1.3). O comando VER exibe a versao do executavel;
 builds bem-sucedidos incrementam Y automaticamente; use .\build.ps1 -KeepVersion
 durante testes repetidos.
 Codigo em project/: main.c, console.c, prompt.c, commands.c, dbf.c, platform.c (+ .h),
 data/CLIENTES.DBF. Modulos e libs registrados em project/project_config.js.
 
-=== FEITO HOJE (2026-10-26) ===
+=== FEITO HOJE (2026-10-27) ===
 - Corrigido congelamento inicial (ROM principal nao existe sob MSX-DOS): removida leitura
   de versao pela ROM, fonte embutida, CheckVersion=false.
 - Corrigido texto espacado (PRINT_WIDTH_1 / PRINT_HEIGHT_1) e cursor fixo da BIOS (CSRSW=0).
 - Console 80x24 com rolagem e edicao de linha; prompt "."; HELP/CLEAR/QUIT.
 - Marco 0: camada platform (DOS, Memory Mapper, arquivos por handle) e comando VER.
-- Marco 1: engine DBF (dBASE III 0x03) e comandos USE, LIST, DISPLAY, GO, SKIP, STRUCTURE.
+- Marco 1: engine DBF II MSX (0x02) e DBF III (0x03/0x83); comandos USE, LIST, DISPLAY, GO, SKIP e STRUCTURE. DBF III foi validado pelo usuario no openMSX; DBF II aguarda validacao.
+- Fontes MSX consultadas por OCR: manual confirma campos C/N/L, ate 65.535 registros, campos de ate 254 caracteres e exclusao logica por '*'; livros descrevem APPEND/REPLACE/DELETE/RECALL/PACK e os modos interativo/programavel.
+- Prioridade invertida: compatibilidade dBASE II Plus para MSX primeiro; dBASE III como extensao posterior. Matriz em DBASE_II_MSX_COMPATIBILITY.md.
+- Camada platform agora implementa abrir/criar/escrever/renomear/apagar arquivos via MSX-DOS 2.
+- `resource/PESSOAL.DBF` confirmou assinatura 0x02, cabecalho de 521 bytes, descritores de 16 bytes e registros de 36 bytes; `dbf.c` agora le DBF II e DBF III. A amostra entrou na imagem DSK; build passou, falta validar no openMSX.
+- Console agora usa fonte ASCII embutida do MSXgl; removido o `VRAM.DAT` incompatível com a pontuacao das strings. Cursor usa underscore ASCII alinhado à base; falta conferir no openMSX.
 - Banco de teste CLIENTES.DBF (5 registros, 1 excluido) + script gerador.
 - Documentacao reorganizada: SPEC (completo), OUTLINE (progresso), resume.txt.
 - Console reescrito: VDP direto + copia da tela em RAM (rolagem rapida) e teclado pela BIOS
   (CHSNS/CHGET via CALSLT) para eliminar o cursor fixo; compilou, FALTA VALIDAR no emulador.
 - Novo comando SET COLOR TO W+/B (estilo dBASE) ou SET COLOR TO 15,4 (paleta MSX); alias COLOR.
-- Fonte de 256 caracteres de resource/vram.dat integrada ao SCREEN 0; build inclui VRAM.DAT no disco. Falta conferir visualmente no openMSX.
 
 === PROXIMOS PASSOS (proxima sessao) ===
-1. Validar no openMSX: (a) a fonte de resource/vram.dat, (b) o cursor fixo sumiu, (c) SET COLOR TO, (d) o Marco 1 (comandos acima);
-   corrigir o que aparecer.
-   Conferir: alinhamento das colunas do LIST, registro excluido marcado com *, datas MM/DD/AA,
-   pausa do LIST, mensagens de erro (USE de arquivo inexistente).
-2. Camada de plataforma: criar/escrever/renomear/apagar arquivos (item 0.8).
-3. Marco 2: APPEND BLANK, REPLACE, DELETE, RECALL, PACK seguro (arquivo temporario).
-4. Deixar para depois: lexer/expressoes (Marco 3), PRG/bytecode (Marco 4).
-5. Itens pequenos: deteccao MSX1 x MSX2 sem ler a ROM; DISPLAY/LIST com FOR.
+1. No openMSX, executar `USE PESSOAL`, `LIST`, `DISPLAY STRUCTURE`, `GO 6` e conferir os seis registros, a pontuacao e o cursor.
+2. Confirmar o comportamento de EOF/padding do arquivo original e testar os wrappers de escrita da platform.
+3. Implementar APPEND BLANK, REPLACE, DELETE e RECALL; depois PACK seguro com comparacao byte a byte.
+4. Completar o nucleo MSX: comandos e NDX documentados, expressoes e modo programavel conforme os livros.
+5. Deixar recursos exclusivos de dBASE III e TUI avancada para depois da conformidade MSX.
 
 === VERSIONAMENTO ===
 - X representa marco funcional e usa codinome de conceito Unix/C classico, sem nomes de pessoas.
@@ -56,10 +57,10 @@ data/CLIENTES.DBF. Modulos e libs registrados em project/project_config.js.
 - RELEASE.md guarda notas completas; Changelog.MD resume cada versao.
 
 === DECISOES / PONTOS EM ABERTO ===
-- Primeira variante DBF: dBASE III 0x03. dBASE II classico (0x02) fica para depois.
+- Variante dBASE III 0x03 mantida apenas como fixture de leitura/interoperabilidade; DBF II MSX e o formato-alvo. Padding/EOF da amostra original ainda nao foram determinados.
 - Limites atuais: 32 campos, registro de ate 256 bytes.
-- Em aberto: ordem UI x indices (SPEC coloca UI antes), Numeric em BCD ou decimal fixo,
-  nome definitivo do projeto.
+- Em aberto: Numeric em BCD ou decimal fixo; nome definitivo do projeto.
+- Ordem decidida: completar compatibilidade dBASE II MSX, depois extensoes dBASE III e UI avancada.
 - DECIDIDO: minimo absoluto 512 KB de Memory Mapper; alvo real 1024 KB (nao projetar para 128/256 KB).
 - DECIDIDO: video e teclado NUNCA pelo console do MSX-DOS/CP/M: VDP direto e BIOS.
 

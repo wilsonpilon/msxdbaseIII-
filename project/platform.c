@@ -29,6 +29,16 @@ u8 PFile_OpenRead(const c8* path)
 	return DOS_OpenHandle(path, O_RDONLY);
 }
 
+u8 PFile_OpenReadWrite(const c8* path)
+{
+	return DOS_OpenHandle(path, O_RDWR);
+}
+
+u8 PFile_Create(const c8* path)
+{
+	return DOS_CreateHandle(path, O_RDWR, 0);
+}
+
 void PFile_Close(u8 file)
 {
 	DOS_CloseHandle(file);
@@ -46,10 +56,25 @@ u16 PFile_Read(u8 file, void* buffer, u16 size)
 	return DOS_ReadHandle(file, buffer, size);
 }
 
+u16 PFile_Write(u8 file, const void* buffer, u16 size)
+{
+	return DOS_WriteHandle(file, buffer, size);
+}
+
 u32 PFile_Size(u8 file)
 {
 	u32 cur = DOS_SeekHandle(file, 0, SEEK_CUR);
 	u32 size = DOS_SeekHandle(file, 0, SEEK_END);
 	DOS_SeekHandle(file, (i32)cur, SEEK_SET);
 	return size;
+}
+
+bool PFile_Rename(const c8* path, const c8* newPath)
+{
+	return DOS_Rename(path, newPath) == DOS_ERR_NONE;
+}
+
+bool PFile_Delete(const c8* path)
+{
+	return DOS_Delete(path) == DOS_ERR_NONE;
 }

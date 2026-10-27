@@ -103,7 +103,7 @@ static void PrintError(u8 err)
 	{
 	case DBF_ERR_OPEN:   Console_Print("*** Arquivo nao encontrado\n"); break;
 	case DBF_ERR_READ:   Console_Print("*** Erro de leitura\n"); break;
-	case DBF_ERR_FORMAT: Console_Print("*** Formato DBF nao suportado (so dBASE III)\n"); break;
+	case DBF_ERR_FORMAT: Console_Print("*** Formato DBF nao suportado pelo leitor atual\n"); break;
 	case DBF_ERR_LIMITS: Console_Print("*** DBF excede os limites (campos ou tamanho do registro)\n"); break;
 	case DBF_ERR_RANGE:  Console_Print("*** Registro fora do arquivo\n"); break;
 	}

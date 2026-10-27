@@ -34,6 +34,12 @@ void Platform_Detect(void);
 // Abre um arquivo existente somente para leitura. Retorna PFILE_INVALID se falhar.
 u8 PFile_OpenRead(const c8* path);
 
+// Abre um arquivo existente para leitura e escrita.
+u8 PFile_OpenReadWrite(const c8* path);
+
+// Cria ou substitui um arquivo para leitura e escrita.
+u8 PFile_Create(const c8* path);
+
 // Fecha o arquivo.
 void PFile_Close(u8 file);
 
@@ -43,7 +49,14 @@ bool PFile_Seek(u8 file, u32 offset);
 // Le ate size bytes. Retorna os bytes lidos (0 = fim do arquivo) ou PFILE_ERROR.
 u16 PFile_Read(u8 file, void* buffer, u16 size);
 
+// Escreve ate size bytes. Retorna os bytes escritos ou PFILE_ERROR.
+u16 PFile_Write(u8 file, const void* buffer, u16 size);
+
 // Tamanho do arquivo em bytes (preserva a posicao atual).
 u32 PFile_Size(u8 file);
+
+// Renomeia ou remove um arquivo. Retorna FALSE em caso de erro.
+bool PFile_Rename(const c8* path, const c8* newPath);
+bool PFile_Delete(const c8* path);
 
 #endif
