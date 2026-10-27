@@ -1,0 +1,4542 @@
+                ;TED subroutines
+
+if1
+                .printx * Assemble: SUBTED.MAC *
+endif
+
+                include OFFSET.MAC      ;Indexed-variable offsets
+
+bs              equ 08h
+tab             equ 09h
+lf              equ 0Ah
+home            equ 0Bh
+clsHm           equ 0Ch
+cr              equ 0Dh
+esc             equ 1Bh
+right           equ 1Ch
+left            equ 1Dh
+up              equ 1Eh
+down            equ 1Fh
+del             equ 127
+nul             equ 0FFh
+ctrlZ           equ 1Ah
+
+enaSlt          equ 24H
+
+txtCgp          equ 0F3B7H
+csrY            equ 0F3DCH
+csrX            equ 0F3DDH
+rg1sav          equ 0f3e0h
+pbID            equ 0f976h
+newKey          equ 0FBE5H
+intFlg          equ 0FC9BH
+h.lptO          equ 0FFB6h
+
+memMan          equ 4D00H
+use2            equ 2
+alloc           equ 10
+deAlloc         equ 20
+iniChk          equ 30
+getCur          equ 32
+info            equ 50
+getTsrID        equ 62
+
+delFile         equ 13H
+create          equ 22
+rename          equ 23
+setDma          equ 26
+rbRead          equ 39
+open            equ 15
+getTime         equ 2CH
+rbWrite         equ 38
+close           equ 16
+openFH          equ 43H
+createFH        equ 44H
+readFH          equ 48H
+writeFH         equ 49H
+seek            equ 4AH
+del2            equ 4DH
+ren2            equ 4EH
+parse           equ 5BH
+
+                global bouwOp,haalPrt,prtRg,prtRg2,insReg,regNum
+                global scrlUp,getName,mul16,div16,decToBin
+                global dcSet,deci2,prtSav,prtStr,strOut,dcBuf
+                global setVdp,ldrMv2,ldrVm2,nLdrMv,nStWrt
+                global NCHPTI,NCHPUT,NCHGET,CONTROL,MEMVOL,REGLANG
+                global DSKERR,KARERR,GRAPH,P2SEG
+                global RECERR,ONDERBR,ERROR,fullPageTab
+                global CHECKAG,INT,LOADIN2,indentBlok
+                global BCDSET,PRTBCD,MAKEKAR,TOACCESS,GETFLEN
+                global TOCHECK,CODE,ldrMv2,ldrVm2,strLen
+                global COPYBLOK,MOVEBLOK,WISBLOK,RESETBLOK,STARTBLOK
+                global ENDBLOK
+                global SAVDEF,SAVINS
+                global NAAM2,MAKETXT,SFCB2,SAVEBLOK,SAVE
+                global LOADBLOK,LOAD,LOAD2,LDBLK2,NOTFOUND
+                global UPDATE,UPDAT2,MAAKFCB,SAVE1,SV0B,ZOEKMAP,PUTP2
+                global FINDPB,ZOEK,AGAIN
+                global EXTBIOS,MEMMAN,MMUSE2,FRESEG,DEALLOC
+                global getPageStop,chkPageTab,disVdpInt,enaVdpInt
+
+                ;Externals in MAIN.MAC - subroutines, variables etc.
+
+                ext CALSUM,CHKTED,KANTLIJN,TGETNAME,DECODE,CRLTAB
+                ext PRTNUM,CSRNUM,STRBUF,STRBF2,STRBF3,GETPLT,COLORS,TOCHK
+                ext BIGFIL,DOS,IVLINE,KOLOMS,HM0,HLPCNT,MMTABEL
+                ext BSTARTLN,BENDLN,DCOMPR,TXTCOL,NWRVRM,NRDVRM
+                ext DISKBUF,DELLNO,INSLNO,CHECK2,BLKPS3,BLKCNT,BLKON,BLKOFF
+                ext LASTLINE,INVOER,GETTXT,TNAME,BUF,path1Buf,TKEUZE
+                ext CHSNS,CHGET,CHPUT,ESCCNT,SAVNAM,MMANERR
+                ext TOREGEND,TOETS1,TOETS6,TOREGSTART,OMLAAG
+                ext REMOVLN,COMLN,NOCTRL,CL0,TOMIDDEN,GETCMD,ESCAPE
+                ext MESKEY,GOTOLINE,FKEYNUM,INSERT,CHKSTOP
+                ext STACK,INTCNT,TMOMENT,INICLR,MSXKAR,menuXY
+                ext GETCODE,ACCESS,CHECK,ADDCODE,TODOS,AUTOCNT
+                ext TEDMAX,VRMEND,POINTERS,TTAB,STARTVAR,ENDVAR,TOINHOUD
+                ext SEGEND,BF3PNT,EVTOPSLAAN,ZOEKBUF,VERVBUF,SAVZOEK
+                ext FCB,MAIN,MAIN1,TABEL,INKCRL,CLOSEBF,STMOTR
+                ext MAXPTR,FREMEM,SAVFD,SAVFE,FCB1,AANCSR,TVERSIE,RECHTS
+                ext TEXTENS,SAVESTART,SAVEEND,GETOLD,KLEIN,MIDLINE,TEKEN,LINKS
+                ext MESSAGE,BUFPOINT,KEYCNT,CFORMAT,GOLINE2,DELETE
+                ext ENDTPA,LOADREG,VRAAGSAVE,OPSLAAN,BSPACE,BEEP,ZEKER
+                ext LOADNAM,GROOTTE,BLOK,RETINS,SETBOUW,RESTSCR,THELP,DELSPC
+                ext toCurLine,cmpBlank,pageTab,delPageStop,pbTsrID
+                ext menuEsc,getONr
+
+                ;Externals in TEDSTR - language-dependent screen messages
+
+                ext indKar
+                ext xAantPos
+
+                ext TRECERR,TREGLEN,TONDERB,TMEMVOL,TTOMANY,TDISKVOL,TPROT
+                ext TNODISK,TDSKERR,TVERERR,TKARERR,TNOTFND,TPROB,TVERVANG
+                ext TSAVNAM,TLOADNAM,TSAVINS,TZOEK,TZOEK2,TWEL,TACHTER,TONV
+
+                ext tIndent
+
+                ext tPageTabFull,krtStart,krtEnd,tNoKrt,krtPos
+                ext INSKAR
+                ext VRMREG,VRMKOL,VRMPAG
+
+                ext XZOEK
+
+                ;Externals in GETPUT.MAC
+
+                ext clear,clrNoPageTab,get,get2,put,swap,fre
+                ext rnPageTab,invoegNoRn,rnPointers
+                ext delStr,addLine,rTabHL,wTabHL,readHL,writeHL
+                ext voegIn,zr0a,zr0b,makeTab,mmOut,getBot2
+                ext delLines,zoekNum
+
+                ;Start of TED.COM, lands at address 0103 hex.
+
+                db 'E',CLSHM,'Krakers verzieken de M.S. Aktie!',CTRLZ
+                dw CRLTAB               ;Pointer to control keys, TED-INST
+
+                db 0                    ;Length byte for decimal buffer
+DCBUF:          ds 6                    ;Decimal buffer
+KARBUF:         ds 8                    ;8 bytes of character pattern
+CURBREG:        dw 0
+MOVSRT:         dw 0
+MOVLEN:         dw 0
+STRPOS:         dw 0
+INDEX:          db 0
+DATADR:         dw 0                    ;Next address in data segment
+PNTADR:         dw 0                    ;Next address in pointer segment
+RENUMLN:        dw 0
+strLen:         dw 0                    ;String length being removed
+aantDelPnt:     dw 0                    ;Number of lines to remove
+firstPntAddr:   dw 0                    ;Address of pointers to remove
+firstDataAddr:  dw 0                    ;Address of string to remove
+nextDataAddr:   dw 0                    ;End of strings to remove
+DFBUF:          db 0                    ;Data-file character buffer
+P2SEG:          db -1                   ;Current segment mapped in Z80 page 2
+
+                ;DOS-2/MemMan extended bios jump table
+
+allSeg:         jp 0                    ;Allocate segment
+freSeg:         jp 0                    ;Free segment
+getP1:          jp 0                    ;Get page 1 segment
+putP2:          jp 0                    ;Put page 2 segment
+getP2:          jp 0                    ;Get page 2 segment
+
+mmUse2:         jp 0                    ;MemMan fastUse2 function
+extBios:        call 0ffcah             ;Call into the EXTBIO hook
+                ld iy,tabel             ;Restore IY, just to be safe
+                ret
+
+
+                ;Redraw the screen
+
+bouwOp:         bit bouw,(iy-flags4)    ;Does the screen need rebuilding?
+                ret z                   ; No, => return
+                res bouw,(iy-flags4)
+bo1:            bit hlp,(iy+savFl2)     ;Help menu on screen?
+                jr z,bo2b
+                bit rstH,(iy-flags4)    ;Restore the menu?
+                jr z,bo2b
+                res rsth,(iy-flags4)    ; Yes, show the menu
+                ld a,3+hlpCnt
+                bit comLin,(iy+tabSav)
+                jr z,bo2
+                ld a,5+hlpCnt
+bo2:            ld (iy+minLin),a
+                sub hlpCnt
+                ld l,a                  ;L = top Y position
+                call hm0                ;Build the help menu
+                call prtRg              ;Print the (new) current line
+bo2b:           ld a,(iy+minLin)        ;Start at the top row
+                ld (iy+bouwNum),a
+bo3:            ld a,(iy+bouwNum)
+                dec a
+                cp (iy+maxLin)
+                jp nc,kantLijn          ;Place tab stops on the screen
+                inc a
+                inc (iy+bouwNum)
+                cp (iy+yPos)
+                jr z,bo3                ;Skip the current line
+                ld (iy+prtReg),a        ;Pass row number to the print routine
+                call haalPrt            ;Fetch and print
+                jr bo3                  ;Next row
+
+                ;Fetch and print a line
+
+haalPrt:        ld d,0
+                ld e,(iy+yPos)
+                ld hl,(csrNum)
+                or a
+                sbc hl,de               ;HL = number of the top row
+                ld a,(iy+prtReg)        ;Row to be printed
+                push af
+                ld e,a
+                add hl,de
+                ex de,hl                ;DE = string number
+                ld hl,strBf2            ;String into scratch buffer
+                push hl
+                ld (prtNum),de          ;Save the line number being printed
+                call get
+                pop hl
+                pop af
+                jp prtRg2               ;Print the string
+
+                ;Print the current line and locate the cursor
+
+prtRg:          ld hl,(csrNum)
+                ld (prtNum),hl          ;Pass number of line to print
+                ld a,(iy+yPos)          ;Current screen position
+                ld hl,strBuf            ;Current line buffer
+                call prtRg2             ;Put string on screen
+                ld hl,(csrNum)          ;Line number
+                call regNum
+                ld hl,vrmKol            ;Get VRAM address of the column number
+                call nStWrt
+                ld a,(iy+xPos)          ;Column
+                add a,(iy+offset)
+                call prtBcd
+
+                ld hl,vrmPag
+                call nStWrt             ;Set VRAM address to `pagina: '
+
+                ld hl,0                 ;Current page count is 0
+
+                bit nPageNum,(iy+savFl3);Show page-number indicator?
+                jr nz,pg3               ; No, => always show page 0
+
+                ld ix,pageTab           ;Page table into IX
+                ld b,h                  ;Current entry in pageTab = 0
+
+calcCurPageLp:  push bc                 ;Save entry counter B
+                push hl                 ;Save page counter HL
+
+                ld hl,(csrNum)          ;Current line in HL
+                inc hl                  ;Make 1-based
+
+                ld a,(iy+numPageStops)
+                cp b                    ;Last entry in the table?
+                jr z,inThisPage         ; Yes, => line is in this page
+
+                ld e,(ix+0)             ; No, fetch the next page stop
+                ld d,(ix+1)
+                call dCompr             ;Is the page stop past this line?
+                jr c,inThisPage         ; Yes, => line is in this page
+                jr z,inThisPage
+
+                ld l,(ix-2)             ;Get the previous page stop
+                ld h,(ix-1)
+
+                ex de,hl                ;Larger value into HL
+                sbc hl,de               ;Compute number of lines in this page
+
+                call getNumPages        ;Compute the page count
+
+                pop de                  ;Fetch current page count
+                add hl,de               ;Add this count to the running total
+                pop bc                  ;Restore entry counter
+
+                inc b                   ;Move to next page stop
+                inc ix
+                inc ix
+
+                jr calcCurPageLp        ;Compute number of pages
+
+inThisPage:     ld e,(ix-2)             ;Get previous page stop into DE
+                ld d,(ix-1)
+                or a
+                sbc hl,de               ;Compute number of lines in this page
+
+                call getNumPages        ;Compute number of pages
+
+                pop de                  ;Fetch current page count
+                add hl,de               ;Add this count to the running total
+                pop bc                  ;Drop the entry counter
+
+pg3:            call deci2              ;Page number into Deci-Buf
+                ld b,4                  ;Print at most 4 digits
+                call prDeci             ;Print the number
+                bit hlp,(iy+savFl2)     ;Help menu on screen?
+                jr z,PgX
+                bit rstH,(iy-flags4)    ;Restore menu?
+                jr nz,pgx               ; Yes, => no menu, no large letters
+                bit bigLet,(iy+savFl2)  ;Large letters?
+                jr z,pgx
+                ld a,(iy+xPos)          ; Yes, draw large letters in help menu
+                add a,(iy+offSet)
+                ld b,a
+                ld a,(strBuf)
+                inc a
+                sub b                   ;A = LEN - XPOS
+                cp 6
+                jr c,pg3b
+                ld a,6                  ;At most 6 chars to right of cursor
+pg3b:           add a,b
+                sub 13                  ;Cursor before position 13?
+                ld c,1                  ; Yes, show text from pos. 1
+                jr c,pg4
+                inc a                   ; No, show text from csr pos. -12
+                ld c,a
+pg4:            ld hl,strBuf
+                ld d,0
+                ld e,c
+                add hl,de
+                ld b,13                 ;Print 13 chars
+pg5:            ld a,(strBuf)           ;[C] = pos. of char in StrBuf (1-255)
+                cp c                    ;Reached end of line?
+                ld a,' '
+                jr c,pg6                ; Yes, print spaces from now on
+                ld a,(hl)               ; No, => print char (HL) in big font
+pg6:            ld d,a                  ;Save the character
+                ld a,(iy+xPos)
+                ADD A,(IY+OFFSET)
+                CP C                    ;Are we drawing the cursor position?
+                LD A,D                  ; Yes => Z flag set
+                PUSH HL
+                PUSH BC
+                CALL PRTBIG             ;Print the character
+                POP BC
+                POP HL
+                INC HL
+                INC C
+                DJNZ PG5                ;Next character
+PGX:            BIT COMLIN,(IY+TABSAV)  ;Editor screen?
+                RET Z
+                LD HL,26*80             ;No, print the cursor pointer
+                LD BC,80
+                LD A,' '
+                CALL BIGFIL
+                LD A,(IY+XPOS)
+                DEC A
+                LD H,0
+                LD L,A
+                LD DE,26*80
+                ADD HL,DE
+                LD A,'^'
+                JP NWRVRM
+
+
+; getNumPages
+;
+; In:  HL = number of lines
+; Out: HL = number of pages
+;
+getNumPages:    ld a,(iy+pagLen)        ;Get page length
+                or a                    ;PagLen = 0?
+                jr z,onePage            ; Yes, => always fits on 1 page
+                push hl                 ;Save number of lines
+
+                ld de,(koloms)          ;Get number of columns into DE
+                ld h,d                  ;H = D = 0
+                ld l,a                  ;L = A = page length in HL
+                ld a,e                  ;Is the column count 1?
+                dec a                   ; If so, mul16 has no effect
+                call nz,mul16           ; No, cols*pagLen = total page length
+
+                ex de,hl                ;Page length into DE
+                pop hl                  ;Get the line count
+                call div16              ;HL = lineCount / pagLen
+                ld a,d
+                or e                    ;Remaining lines?
+                ret z
+                inc hl                  ; Yes, those cost an extra page
+                ret
+onePage:        ld hl,1                 ;Page count = 1
+                ret
+
+
+                ;Print the character in [A] in big-font form
+
+PRTBIG:         PUSH BC                 ;B = 13 - position
+                PUSH AF                 ;Z flag = cursor position
+                LD H,0
+                LD L,A                  ;Compute char position in char table
+                ADD HL,HL               ; by multiplying by 8
+                ADD HL,HL
+                ADD HL,HL
+                LD DE,(TXTCGP)          ;Add the table base address
+                ADD HL,DE
+                LD DE,KARBUF
+                LD C,8
+                XOR A
+                CALL NLDRMV             ;Fetch pattern from screen VRAM
+                POP AF                  ;Get Z flag
+                JR NZ,PB0B              ; NZ => no cursor
+                LD HL,KARBUF
+                LD B,8
+                BIT INSFL,(IY+FLAGS1)   ;Insert mode on?
+                JR Z,PB0                ; No, => show block cursor
+                BIT BLKC,(IY+SAVFL)     ;Block cursor?
+                JR NZ,PB0
+                LD HL,KARBUF+5          ; No, line cursor = insert on
+                LD B,3
+PB0:            LD A,(HL)
+                CPL                     ;Invert the character
+                LD (HL),A
+                INC HL
+                DJNZ PB0
+PB0B:           POP AF                  ;Fetch char number into A (13..1)
+                NEG                     ;Compute x position of character
+                ADD A,13                ;13 chars at 6 positions
+                ADD A,A                 ;*2
+                LD B,A
+                ADD A,A                 ;*4
+                ADD A,B                 ;*6
+                INC A
+                LD (CSRX),A
+                LD A,(IY+MINLIN)
+                SUB HLPCNT              ;Compute y position of help menu
+                LD HL,CSRY
+                LD (HL),A
+                LD B,8                  ;8 lines per character
+                LD C,(IY+VDPWRITE)
+                LD DE,KARBUF
+PB1:            PUSH BC
+                PUSH DE
+                CALL SETVDP             ;Prepare VDP for writing
+                POP DE
+                LD B,6                  ;6 columns per character
+                LD A,(DE)
+PB2:            RLA                     ;Shift bit into carry
+                PUSH AF
+                LD A,' '
+                JR NC,PB3               ;Bit is 0 => print space
+                LD A,0DBH               ;Bit is 1 => print solid block
+PB3:            OUT (C),A
+                POP AF
+                DJNZ PB2                ;Next bit
+                POP BC
+                INC (HL)                ;1 line down
+                INC DE                  ;Next scan line
+                DJNZ PB1
+                RET
+
+                ;HL = string
+                ;A  = screen row, 1-based
+
+PRTRG2:         bit dispOff,(iy-flags5) ;Screen rebuild not active?
+                ret nz                  ; Yes, => do not draw any rows
+
+                RES LONG,(IY-FLAGS2)    ;Flag: line not too long (> 79 chars)
+                PUSH AF                 ;Save Y-POS
+                LD DE,SETINV            ;Continue at SET INVerse
+                PUSH DE
+                PUSH HL
+                DEC A                   ;Row number in [A]
+                ADD A,A                 ;*2
+                ADD A,A                 ;*4
+                ADD A,A                 ;*8 (works up to max 31 screen rows)
+                LD H,0
+                LD L,A                  ;Row number*8 into [HL]
+                LD D,H                  ;Save *8 in DE
+                LD E,L
+                ADD HL,HL               ;*16
+                ADD HL,HL               ;*32
+                ADD HL,DE               ;*40
+                ADD HL,HL               ;*80 chars per row
+
+                call nStWrt             ;Prepare VDP-Write at row start
+
+                ld bc,9 shl 8           ;10 bytes * 8 bits = 80 chars, buffer
+                ld hl,ivLine            ;Clear color table for this row
+pr1:            ld (hl),c               ;Fill with zero
+                inc hl
+                djnz pr1                ;After the loop [B] is always 0
+                ld (hl),1               ;Pos 80 = inverse, status char
+
+                ld c,(iy+vdpWrite)
+                pop hl                  ;Get string address
+                push hl
+                ld a,(hl)
+                or a                    ;Empty line?
+                jp z,prtNul             ; Yes, => print spaces
+
+                ld d,b                  ;D = B = 0
+                ld e,a                  ;DE = line length
+                add hl,de
+                ld b,(hl)               ;Get last character into B
+                sbc hl,de               ;No carry, since the ADD did not set it
+                ld e,(iy+offSet)
+                add hl,de               ;Add X-offset to start position
+                sub e                   ;Subtract X-offset from line length
+                jr nc,pr27              ;Still characters left
+                xor a                   ;All chars fall off left of screen
+
+pr27:           inc hl                  ;Skip the length byte
+                cp 80
+                jr c,pr3                ;Line fits on screen => PR3
+                jr nz,pr28
+                ld a,b                  ;Is the 80th char a space?
+                cp ' '
+                jr z,pr29
+pr28:           set long,(iy-flags2)    ;Flag: show '+' = line too long
+pr29:           ld a,79
+pr3:            push af
+                or a
+                jr z,pr5
+                ld e,b                  ;Last char into E
+                ld b,a
+                otir
+pr5:            ld b,' '
+
+                bit nPageStop,(iy+savFl2);Page-stop indicator on?
+                jr nz,pr5c              ; No, => print status character
+
+                push de
+                push bc
+
+                ld hl,(prtNum)          ;Get current line number
+                call getPageStop        ;Check whether this is a page boundary
+                ld a,'S'                ;Status char for hard page stops
+                jr nc,pr5a              ;Hard page boundary => show 'S'
+
+                bit pag,(iy+savFl2)     ;Show ordinary page boundary?
+                jr z,pr5b               ; No, => show plain status char
+
+                or a
+                sbc hl,de               ;Compute distance to end of page
+
+                ld d,0                  ;DE = page length
+                ld e,(iy+pagLen)
+                inc e
+                dec e
+                jr z,pr5b               ;Page length = 0 => PR5B
+
+                call div16              ;Divide line number by page length
+                ld a,d
+                or e
+                jr nz,pr5b              ; Remainder = 0? No, => PR5B
+
+                ld de,(koloms)          ;Get number of columns
+                dec e                   ;Is the column count 1?
+                ld a,'P'
+                jr z,pr5a               ; Yes, => print quickly and bail out
+                inc e                   ;Restore column count in DE
+
+                call div16              ;Compute current column number in DE
+                inc e
+                dec e
+                ld a,'P'
+                jr z,pr5a               ;DE = 0 => end of page
+                ld a,e
+                add a,'0'               ;Status char = column number on
+pr5a:           pop bc                  ;Get old status char + I/O port
+                pop de                  ;Get last char of line (E)
+                ld b,a                  ;New status char into B
+                pop af                  ;Get line length off the stack
+                push bc                 ;Status char back on the stack
+                ld b,'_'                ;Show end of page with '_'
+                jr pr5d
+
+pr5b:           pop bc
+                pop de
+
+pr5c:           pop af                  ;Get line length into A
+                push bc
+pr5d:           ld d,a
+                ld a,79
+                sub d
+                jr z,pr7
+pr6:            out (c),b
+                dec a
+                jp nz,pr6
+pr7:            ld a,b
+                cp '_'                  ;Page/column indicator?
+                pop bc
+                ld a,b                  ;       Column digit in [A]
+                jr z,pr8                ; Yes, => done
+                ld a,'+'                ;'+' = line longer than screen
+                bit long,(iy-flags2)
+                jr nz,pr8
+                bit edit,(iy+savFl2)    ;Edit mode?
+                jr nz,pr7b              ; Yes, => always print '<'
+                ld a,e
+                cp ' '                  ;Is last char of line a space?
+                jr z,pr8                ; Yes, => next line = same paragraph
+pr7b:           ld a,'<'                ; No, => indicate end of paragraph
+pr8:            out (c),a
+                pop bc                  ;BC = string address
+                ld hl,(prtNum)
+                ld de,(bStartLn)        ;Does line lie inside the block?
+                call dCompr             ;Compare HL with DE
+                ret c
+                ld a,0                  ;Start position 0 if
+                jr nz,pr9               ; current line is not first in block
+                ld a,(iy-bSrtPos)       ;Get 1st char of 1st line
+pr9:            sub (iy+offset)
+                jr nc,pr10
+                xor a
+pr10:           ld e,a                  ;E = 1st char
+                push de
+                ld de,(bEndLn)
+                call dCompr             ;Line beyond block end?
+                pop de
+                ld a,(bc)               ;Get line length
+                jr z,pr10b              ;Last line => PR10B
+                ret nc
+                jr pr11
+pr10b:          ld b,(iy-bEndPos)
+                cp b                    ;Compare lineLen with block-end pos.
+                jr c,pr11               ; Block end larger => lineLen = max
+                ld a,b
+pr11:           sub (iy+offset)
+                ret c                   ; Falls left of screen
+                ret z
+                cp 80                   ;Max 79 chars
+                jr c,pr12
+                ld a,79
+pr12:           sub e
+                ret z                   ; Smaller than 1st char
+                ret c
+
+                ;Invert block line: E = 1st inverse char, A = length
+
+                PUSH AF
+                XOR A                   ;Clear carry
+                SRL E                   ;Divide E by 8, remainder in A
+                RRA
+                SRL E
+                RRA
+                SRL E
+                RRA
+                LD D,0
+                LD HL,IVLINE
+                ADD HL,DE               ;Add xPos/8 to buffer address
+                LD B,5
+IT2:            SRL A                   ;Finish shifting the remainder
+                DJNZ IT2
+                LD B,10000000B          ;Bit mask in B
+                OR A                    ;Done?
+                JR Z,IT4
+IT3:            SRL B
+                DEC A                   ;Rotate B A times
+                JR NZ,IT3
+IT4:            POP DE                  ;D = number of chars
+IT4B:           LD A,(HL)               ;Set the bit in the table
+                OR B
+                LD (HL),A
+                SRL B
+                JR NC,IT5
+                LD B,10000000B
+                INC HL                  ;Next byte
+IT5:            DEC D
+                JR NZ,IT4B              ;Next character
+                RET
+
+SETINV:         POP BC                  ;B = Y-Pos
+                LD DE,10                ;10 bytes per row
+                LD HL,-10               ;Start at -10
+SEI2:           ADD HL,DE               ;Compute row start
+                DJNZ SEI2
+                LD DE,(TXTCOL)
+                ADD HL,DE
+                EX DE,HL
+                LD HL,IVLINE
+                LD C,10
+                JP NLDVM0               ;Copy IVLINE to color table
+
+                ;Print a line with length zero
+
+PRTNUL:         LD HL,(PRTNUM)
+                LD DE,(LASTLINE)
+                XOR A                   ;No carry, lineLen = 0
+                SBC HL,DE               ;Current line beyond the last?
+                LD E,A                  ;       Last char of line <> ' '
+                JP C,PR3                ; No, => print '<'
+                LD B,79
+                LD A,' '
+PN1:            OUT (C),A               ; Yes, blank the current line
+                DJNZ PN1
+                LD A,':'                ;Mark EOF with ':'
+                OUT (C),A
+                POP HL                  ;Get string address off stack
+                RET
+
+; getPageStop
+;
+; Determines the line number of the hard page boundary at or just above line [HL]
+; The page-boundary table is searched with a binary search
+;
+; In:      HL = line number (0-based)
+; Out:     HL = line number (1-based)
+;          If a value is found:
+;            Carry = clear
+;            DE = page end (1-based)
+;            IX = position of DE in pageTab
+;          otherwise:
+;            Carry = set
+;            DE = previous page end (1-based)
+;            IX+0, IX+1 = position in pageTab where (HL) would be inserted
+;
+; Modifies: AF, BC, DE, HL, IX
+;
+getPageStop:    ld b,h                  ;Save the searched value
+                ld c,l
+                inc bc                  ;Make first text line number 1
+
+                ld hl,pageTab           ;Lower bound = base address
+                ld a,(iy+numPageStops)  ;Get total number of page stops
+                or a                    ;Zero page stops?
+                scf
+                jr z,quitGetPage        ; Yes, => not found
+
+                ex de,hl                ;DE = lower bound
+
+                ld hl,quitGetPage       ;Push return entry on the stack
+                push hl
+
+                dec a                   ;Make entry count 0-based
+                ld h,0                  ;Entry count into HL
+                ld l,a
+                sla l                   ;*2 bytes per entry
+                rl h
+                add hl,de               ;HL = upper bound
+
+getPageLoop:    push hl                 ;Save upper bound on the stack
+                add hl,de               ;Middle = (upper + lower) \ 2
+                rr h                    ;\2
+                rr l
+
+                ld a,e                  ;Get low address byte of lower bound
+                rra                     ;Shift bit 0 into carry
+                jr c,makeEven           ;Bit 0=1, => make middle bit 0 = 1
+                set 0,l                 ;Align on word boundary (2 bytes) + 1
+                jr getHighByte          ;HL now points at high byte of entry
+makeEven:       bit 0,l                 ;Align on word boundary+1 = high byte
+                jr z,getHighByte        ; => already at high byte
+                inc hl                  ;Move HL to high byte of element
+
+getHighByte:    ld a,(hl)               ;Get high byte of middle element
+                dec hl                  ;Step to low byte and compare with
+                cp b                    ; searched value (sets both C and Z)
+                jr nz,pageNotEqual      ; => if searched value <> element
+                ld a,(hl)               ;Get low byte
+                cp c                    ;Compare too
+pageNotEqual:   jr nc,elmTooLarge       ; => if element >= searched line
+                ex de,hl                ;Lower bound = middle + 1
+                inc de                  ;Move to next element
+                inc de
+                pop hl                  ;Restore upper bound
+                jr pageContLp           ;Next iteration
+
+elmTooLarge:    inc sp                  ;Drop old upper bound
+                inc sp
+                ret z                   ;Done if values are equal
+
+                dec hl                  ;Upper bound = middle - 1
+                dec hl
+
+pageContLp:     ld a,l                  ;Compare upper and lower bound
+                cp e
+                ld a,h
+                sbc a,d
+                jr nc,getPageLoop       ;Continue if at least 1 element left
+                inc hl                  ;Restore pointer to the next
+                inc hl                  ; page stop
+                ret                     ;No page stop, => return with carry
+
+quitGetPage:    push hl                 ;Table pointer into IX
+                pop ix
+                ld e,(ix-2)             ;If not found, take the previous
+                ld d,(ix-1)             ; page stop
+                ld h,b                  ;Line number back into HL
+                ld l,c
+                ret c                   ;Done if no page stop was found
+                ld e,(ix+0)             ;Get found table entry into DE
+                ld d,(ix+1)
+                ret
+
+; chkPageTab
+;
+; Removes page stops that lie beyond the current end-of-text.
+; Page stops can end up beyond the end-of-text when a .TED file is read
+; that contains a too-long page-stop table.
+; This routine must therefore be called after a .TED file has been loaded -
+; or after an error.
+;
+chkPageTab:     ld hl,(lastLine)        ;Get end of text
+                call getPageStop        ;Get page stop
+
+                push ix                 ;Table pointer into HL
+                pop hl
+
+                jr c,putTabEndHere      ;Stop not found => (HL) = table end
+
+                inc hl                  ;Stop found, the table end
+                inc hl                  ; sits one entry further
+
+putTabEndHere:  ld de,pageTab           ;Start of the table into DE
+                or a
+                sbc hl,de               ;Compute number of bytes
+                srl h                   ;Divide by 2 bytes per entry
+                rr l                    ;[L] = entry number
+                ld (iy+numPageStops),l  ;Truncate table at end of text
+                ret
+
+
+                ;Search for the same string as last time
+
+again:          call evtOpslaan
+                ld a,(zoekBuf)
+                or a
+                jp z,notFound           ;Nothing to search for
+                jp zoekEntry
+
+                ;Search for a word
+
+zoek:           call evtOpslaan
+                ld hl,tZoek
+                ld c,8
+                call invoer
+                ld l,(iy+minLin)
+                inc l
+                ld h,xZoek              ;Get x-pos of search text (15)
+                ld (csry),hl
+                ld hl,vervBuf
+                call prtStr             ;Show old replace buffer up front
+                ld hl,csry
+                dec (hl)
+                ld hl,savZoek
+                ld de,zoekBuf
+                ld bc,51                ;1 length byte + 50 chars
+                ldir                    ;Fetch old search string
+                ld hl,zoekBuf
+                ld e,0                  ;All letters allowed
+                ld b,50                 ;String of 50 chars
+                call getOld             ;Get input (and show old search string if any)
+                ld a,c
+                or a
+                jp z,notFound           ;Nothing to search for
+                ld b,0
+                inc c                   ;Include the length byte too
+                ld hl,buf
+                ld de,zoekBuf
+                push hl
+                push bc
+                ldir                    ;Put string in search buffer
+                pop bc
+                pop hl
+                ld de,savZoek
+                ldir                    ;Save searched string for later
+                ld hl,(csry)
+                inc l                   ;1 row down
+                ld h,xZoek              ;Get x-pos of search text (15)
+                ld (csry),hl
+                ld hl,vervBuf
+                ld e,0
+                ld b,50
+                call getOld             ;Get text to substitute with
+                ld b,0
+                inc c
+                ld hl,buf
+                ld de,vervBuf
+                ldir
+                ld hl,(csry)
+                inc l
+                inc l
+                ld h,1
+                push hl
+pz0:            pop hl
+                ld (csry),hl
+                push hl
+                ld de,tZoek2
+                call strOut             ;Print default text
+                pop hl
+                push hl
+                ld h,8
+                ld (csry),hl
+                ld de,tWel
+                bit bovOndK,(iy-flags3)
+                call nz,strOut          ;Print ' Wel' (yes)
+                pop hl
+                push hl
+                inc l
+                ld h,6
+                ld (csry),hl
+                ld de,tAchter           ;Search backwards
+                bit voorAch,(iy-flags3)
+                call nz,strOut
+                pop hl
+                push hl
+                inc l
+                inc l
+                ld h,6
+                ld (csry),hl
+                ld de,tOnv              ;Unconditional ('On'voorwaardelijk) search
+                bit onv,(iy-flags4)
+                call nz,strOut
+pz1:            call chsns
+                jr z,pz1
+                call nChGet             ;Wait for a key
+                cp cr
+                jr z,pz3
+                cp esc                  ;Escape = back
+                pop hl
+                ret z
+                push hl
+                cp 255                  ;Function key?
+                jr nz,pz1
+                call nChGet             ;Get the number
+                ld b,10b                ;B = bit mask
+                cp 1
+                jr z,pz2
+                ld b,1
+                cp 2
+                jr z,pz2
+                cp 3
+                jr nz,pz1
+                ld a,(iy-flags4)
+                xor 1000000b            ;Toggle conditional / unconditional replace
+                ld (iy-flags4),a
+                jp pz0
+pz2:            ld a,(iy-flags3)
+                xor b
+                ld (iy-flags3),a
+                jp pz0
+pz3:            pop hl
+
+zoekEntry:      ld hl,tMoment
+                call message            ;One moment...
+                bit bovOndK,(iy-flags3) ;Distinguish lower/upper case?
+                jr nz,pz5
+                LD HL,ZOEKBUF
+                LD B,(HL)
+                INC HL
+PZ4:            LD A,(HL)
+                CALL KLEIN              ; No, => everything to lowercase
+                LD (HL),A
+                INC HL
+                DJNZ PZ4
+PZ5:            LD HL,ZOEKBUF           ;Build an index table in the disk buffer
+                CALL MAAKTABEL          ; from the search string in ZoekBuf
+                LD (IY+REGLOW),0        ;Print line number every 64 lines
+                LD A,(IY+XPOS)
+                ADD A,(IY+OFFSET)       ;Search starting at the cursor
+                INC A                   ;1 past the cursor
+                LD E,A
+                LD A,(STRBUF)
+                CP E                    ;Cursor at end of line?
+                LD A,E
+                LD DE,(CSRNUM)
+                JR C,ZOEK2B             ; Yes, => Zoek1
+                DEC A
+                CALL POS2               ;Search starting at pos. [A]
+                LD DE,(CSRNUM)
+                JR ZOEK2                ;Continue searching in same line
+ZOEK1:          LD DE,(CSRNUM)          ;DE = line being inspected
+                INC DE
+ZOEKLOOP:       LD A,E
+                AND 01000000B
+                CP (IY+REGLOW)          ;Bit 6 changed?
+                JR Z,ZKL1               ; No, => do not print
+                LD (IY+REGLOW),A
+                EX DE,HL
+                CALL REGNUM             ;Put line number on screen
+                EX DE,HL
+ZKL1:           PUSH DE                 ;Line number in DE
+
+                if not autoDemo         ;No keyscan when running from disk file
+                   call chkStop         ;Test for ESC/^Stop
+                endif
+
+                LD HL,STRBUF            ;Temporary buffer
+                CALL GET                ;Get the line
+                CALL POS                ;Find position in string
+                POP DE
+ZOEK2:          OR A
+                JR NZ,ZOEKFOUND         ;Found
+ZOEK2B:         BIT VOORACH,(IY-FLAGS3) ;Forwards / backwards
+                JR Z,ZOEK3
+                LD A,D
+                OR E                    ;Beginning of the text?
+                JP Z,NOTFOUND
+                DEC DE
+                JP ZOEKLOOP
+ZOEK3:          inc de
+                ld hl,(lastLine)        ;Last line?
+                ld a,l                  ;Compare HL with DE
+                cp e
+                ld a,h
+                sbc a,d
+                jp nc,zoekLoop
+                jp notFound             ;Not found
+
+ZOEKFOUND:      EX DE,HL                ; DE becomes current line
+                CALL MIDLINE            ;Go to the line that was found
+                LD A,(INDEX)
+                DEC A
+                CALL TOMIDDEN           ;Place the cursor
+                LD A,(VERVBUF)          ;Replace?
+                OR A
+                RET Z                   ; No, done
+
+                ;Replace a piece of text
+
+VERVANG:        CALL BOUWOP             ;Rebuild the screen
+                CALL PRTRG
+                CALL CHKSTOP            ;Test for ESC/^Stop
+                BIT ONV,(IY-FLAGS4)     ;Unconditional replace?
+                JR NZ,VERV1B            ; Yes, => do not ask
+                LD HL,TVERVANG
+                CALL MESSAGE            ;Replace y/n ?
+                LD A,(IY+XPOS)
+                LD (CSRX),A
+                LD A,(IY+YPOS)
+                LD (CSRY),A
+VERV1:          CALL INKCRL             ;Also ^J or ^N
+                CP 'N'
+                RET Z
+                CP 'J'
+                JR NZ,VERV1
+VERV1B:         LD A,(ZOEKBUF)          ;Get length
+                LD B,A
+VERV2:          PUSH BC
+                CALL DELETE             ;Erase letter
+                CALL PRTRG              ;Print
+                POP BC
+                DJNZ VERV2              ;Next letter
+                LD A,(IY+FLAGS1)
+                PUSH AF
+                SET INSFL,(IY+FLAGS1)   ;Insert on
+                LD DE,0
+VERV3:          INC DE                  ;Skip the length byte
+                PUSH DE
+                LD HL,VERVBUF
+                ADD HL,DE               ;Get replacement letter
+                LD A,(HL)
+                SET NKL,(IY-FLAGS3)     ;Ignore margins
+                CALL TEKEN              ;Insert the letter
+                POP DE
+                LD A,(VERVBUF)          ;All replaced?
+                CP E
+                JR NZ,VERV3             ; No, => Verv3
+                CALL LINKS              ;Cursor 1 to the left
+                CALL PRTRG
+                POP AF
+                LD (IY+FLAGS1),A        ;Restore insert flag
+                BIT ONV,(IY-FLAGS4)
+                JP NZ,AGAIN             ; => Replace next match
+                RET                     ;Conditional replace => return
+
+                ;Build search table in DISKBUF using the search string at [HL] ZOEKBUF
+
+MAAKTABEL:      LD A,(HL)
+                OR A                    ;Length of search string = 0?
+                RET Z                   ; Yes, => RET
+                LD DE,DISKBUF
+                LD B,0
+MTB1:           LD (DE),A               ;Fill table with the string length
+                INC DE
+                DJNZ MTB1
+                LD D,B
+                LD E,A
+                ADD HL,DE               ;[HL] = end of the search string
+                LD B,A                  ;[B] = length of the search string
+                DEC HL
+                DEC B                   ;The last char does not participate
+                RET Z                   ; in the shift
+                LD C,1                  ;[C] = position of char in
+MTB2:           PUSH HL                 ;  search string
+                LD E,(HL)
+                LD HL,DISKBUF           ;Go to position of char [E] in table
+                ADD HL,DE
+                LD A,(HL)               ;See which position was stored there
+                CP C                    ;Old pos < pos of current char?
+                JR C,MTB3               ; Yes, => char already exists in str
+                LD (HL),C               ; No, char appears for the first time
+MTB3:           POP HL
+                DEC HL
+                INC C
+                DJNZ MTB2               ;Process next char from search string
+                RET
+
+                ;Determine position of ZOEKBUF in STRBUF
+
+POS:            XOR A                   ;Start searching at 1st pos in STRBUF
+POS2:           LD HL,(ZOEKBUF)         ;Entry 2: search starting at pos [A]
+                ADD A,L                 ;Search backwards
+                LD D,0
+                LD E,L
+                LD HL,ZOEKBUF
+                ADD HL,DE               ;Compute end address of search buffer
+                PUSH HL
+
+SLP1:           LD (INDEX),A            ;Index = position in text
+                LD D,0
+                LD E,A
+                LD HL,STRBUF
+                DEC A
+                CP (HL)                 ;Is text shorter than starting index?
+                LD A,D
+                JR NC,POS3              ; Yes, return with A=0
+                ADD HL,DE               ;Compute index address in text
+                POP DE                  ;[DE] = end address of search buffer
+                PUSH DE                 ;[HL] = pos in text
+                LD A,(ZOEKBUF)          ;[B]  = length of search string
+                LD B,A
+                LD C,(HL)               ;C = char at pos. index
+                EX DE,HL
+SLP2:           LD A,(DE)               ;Get char from text
+                BIT BOVONDK,(IY-FLAGS3) ;Distinguish lower/upper case?
+                CALL Z,KLEIN            ; No, lowercase it
+                CP (HL)                 ;Chars equal?
+                JR NZ,POS4              ; No, => stop at this index
+                DEC HL
+                DEC DE
+                DJNZ SLP2
+                LD HL,(ZOEKBUF)
+                LD A,(INDEX)
+                SUB L                   ;Compute start position of found
+                INC A                   ; word
+                LD (INDEX),A
+POS3:           POP DE
+                RET                     ;Found
+POS4:           LD A,C                  ;[A] becomes char at position INDEX
+                BIT BOVONDK,(IY-FLAGS3) ;Distinguish lower/upper case?
+                CALL Z,KLEIN            ; No, lowercase it
+                LD B,0
+                LD C,A
+                LD HL,DISKBUF           ;Get shift positions from the table
+                ADD HL,BC               ;If the char does not occur in the
+                LD B,(HL)               ; search word, jump forward by one
+                LD A,(INDEX)            ; word length
+                ADD A,B                 ;Advance index by [B] positions
+                JR NC,SLP1              ; No overflow, => keep searching
+                XOR A                   ; Overflow, end of line reached.
+                POP DE
+                RET
+
+                ;Save / load current settings
+
+SAVINS:         CALL EVTOPSLAAN         ;Save current line if needed
+                LD HL,TSAVINS
+                LD C,5
+                CALL INVOER             ;Show save menu
+SVLOOP:         LD L,(IY+MINLIN)
+                LD H,53
+                BIT SVINS,(IY+SAVFL2)   ;Cursor on top row, col 53
+                CALL AANCSR             ;Show "save settings" on/off
+                LD HL,TKEUZE
+                CALL MESSAGE
+                LD HL,INSADR
+                LD BC,INSKAR
+                LD A,1                  ;Cursor on
+                JP GETCMD               ;Read key and execute command
+
+                ;F2/B jump table
+
+INSADR:         dw ESCAPE
+                dw CHELKE               ;Save with every text
+                dw SAVDEF               ;Save inside TED
+                dw SAVINSFILE           ;Save settings
+                dw LDINSFILE            ;Load settings
+
+CHELKE:         LD A,(IY+SAVFL2)
+                XOR 1 SHL SVINS         ;Toggle "save settings with every text"
+                LD (IY+SAVFL2),A
+                JR SVLOOP               ;Back to main loop
+
+SAVINSFILE:     call toCurLine          ; Yes, rebuild the screen
+                LD HL,TSAVNAM
+                BIT DOS2,(IY-FLAGS5)    ;DOS2 pathname?
+                JR Z,SA2
+                INC HL                  ; Yes, skip the 3 tabs
+                INC HL
+                INC HL
+SA2:            LD C,1
+                CALL INVOER             ;Get filename
+                CALL NAAM
+                RET C
+SAVINSE:        LD HL,TMOMENT           ;Entry point for SAVE
+                CALL MESSAGE            ;One moment...
+                CALL SAVCOL             ;Save colour palette
+                BIT DOS2,(IY-FLAGS5)    ;DOS2 present?
+                JR Z,SA3                ; No, => create FCB
+                LD HL,BUF
+                LD DE,path1Buf          ;Copy path/filename to BUF+125
+                LD BC,65
+                LDIR
+                CALL MAKETED            ;Build .TED extension
+                LD DE,path1Buf+1
+                LD BC,CREATEFH          ; Yes, create file handle
+                LD A,10B                ;Write only
+                CALL DOS
+                JP NZ,TOOMANY           ; => Too many files
+                LD (IY+DSKFLG),B        ;Save file handle
+                LD DE,STARTVAR
+                LD HL,TOINHOUD-STARTVAR ;HL = length
+                LD C,WRITEFH
+                CALL DOS                ;Write data to the file
+                JP NZ,DISKVOL
+                JP CLOSEBF              ;Close the file handle
+SA3:            LD HL,SA3B
+                PUSH HL
+                LD DE,FCB
+                PUSH DE
+                LD HL,FCB1              ;Get name
+                LD BC,9
+                LDIR
+                LD HL,TTED
+                LD BC,3
+                LDIR                    ;Fill in .TED extension
+                LD A,CREATE
+                PUSH AF                 ;Save DOS open/create code
+                JP MKF0                 ;Build the FCB
+SA3B:           RET C                   ; Too many files => RET
+                LD DE,STARTVAR
+                LD C,SETDMA             ;Set start address
+                CALL DOS
+                LD HL,TOINHOUD-STARTVAR ;HL = length
+                LD DE,FCB
+                LD C,RBWRITE
+                CALL DOS
+                OR A
+                JP NZ,DISKVOL
+                JP CLOSEBF              ;Close the FCB
+
+ldInsFile:      call toCurLine          ;Load settings file
+                ld hl,tLoadNam
+                bit dos2,(iy-flags5)    ;DOS2 pathname?
+                jr z,sa5
+                inc hl                  ; Yes, skip the 3 tabs
+                inc hl
+                inc hl
+sa5:            ld c,1
+                call invoer             ;Get filename
+                call naam
+                ret c
+                call loadIns            ;Load settings
+                jp chkPageTab           ;Check for illegal page stops
+
+loadIns:        SET MTED,(IY-FLAGS5)    ;Make entry: build .TED extension
+loadIn2:        LD HL,TMOMENT
+                CALL MESSAGE            ;One moment...
+                BIT DOS2,(IY-FLAGS5)    ;DOS2 present?
+                JR Z,SA6                ; No, => open FCB
+                LD HL,BUF
+                LD DE,path1Buf          ;Copy path/filename to BUF+125
+                LD BC,65
+                LDIR
+                BIT MTED,(IY-FLAGS5)
+                CALL NZ,MAKETED         ;Build .TED extension
+                LD DE,path1Buf+1
+                LD C,OPENFH             ; Yes, open file handle
+                LD A,1                  ;Read only
+                CALL DOS
+                RET NZ                  ; => not found
+                LD (IY+DSKFLG),B
+                LD HL,TVERSIE-STARTVAR
+                CALL CHKVER             ;Check whether this is a TED 2.5 file
+                JR Z,SA5B               ; Yes, => Ok
+                LD A,B
+                CP 3                    ;First digit ok? (version 2.xx?)
+                JP Z,VERSERR            ; No, => unreadable
+SA5B:           XOR A                   ; Yes, will load, but not the help screen
+                LD H,A
+                LD L,A
+                LD D,A
+                LD E,A
+                LD B,(IY+DSKFLG)
+                LD C,SEEK
+                PUSH BC
+                CALL DOS                ;File pointer to zero
+                POP BC
+                BIT MSXK,(IY+SAVFL)
+                PUSH AF                 ;Save MSX-set state
+                BIT STTAB,(IY+TABSAV)   ;Tabs in memory y/n
+                PUSH AF                 ;Save the flag
+                LD A,(IY+BOTMAP)        ;Save current number of vram pages
+                PUSH AF
+                LD DE,STARTVAR
+                LD HL,TOINHOUD-STARTVAR ;HL = length
+                LD C,READFH
+                CALL DOS                ;Read settings from the file
+                JR SA8                  ; => Rebuild screen + close the file
+SA6:            LD DE,FCB               ;FCB address
+                LD HL,FCB1              ;Get name
+                LD BC,9
+                LDIR
+                BIT MTED,(IY-FLAGS5)
+                JR Z,SA6B
+                LD HL,TTED
+SA6B:           LD BC,3                 ;Fill in .TED extension
+
+                ldir                    ;Move extension into FCB
+                xor a
+                ld (de),a               ;Clear extent byte of FCB
+                ld c,open
+                ld de,fcb
+                call dos                ;Open file
+                or a
+                ret nz                  ; => error
+
+                ld hl,1
+                ld (grootte),hl
+                ld (iy+dskflg),L        ;1 file open
+                dec hl
+                ld (blok),hl
+                ld (blok+2),hl
+
+                LD HL,TVERSIE-STARTVAR
+                CALL CHKVER             ;Check whether this is a TED 2.4 file
+                JR Z,SA7B               ; Yes, => Ok
+                LD A,B
+                CP 3                    ;First digit wrong? (not 2.xx?)
+                JP Z,VERSERR            ; Yes, => unreadable
+SA7B:           LD DE,STARTVAR          ; No, will load, but not the help screen
+                LD C,SETDMA
+                CALL DOS
+                LD HL,0
+                LD (BLOK),HL
+                LD (BLOK+2),HL
+                BIT MSXK,(IY+SAVFL)
+                PUSH AF                 ;Save MSX-set state
+                BIT STTAB,(IY+TABSAV)   ;Tabs in memory y/n
+                PUSH AF                 ;Save the flag
+                LD A,(IY+BOTMAP)        ;Save current number of vram pages
+                PUSH AF
+                LD A,(IY+MAPFLAG)       ;Save current mapper state
+                PUSH AF
+                LD HL,TOINHOUD-STARTVAR ;HL = length
+                LD DE,FCB
+                LD C,RBREAD
+                call dos                ;Read settings from the file
+                pop bc
+                ld (iy+mapFlag),b
+sa8:            pop bc
+                LD (IY+BOTMAP),B
+                pop af                  ;Were there TABs in memory?
+                jr z,noTabsInMem        ; No, => TAB state from .TED file is ok
+                ld hl,(lastLine)        ;Is there text in memory?
+                ld a,h
+                or l
+                jr z,noTabsInMem        ; No, => do not restore TAB state
+                set sttab,(iy+tabSav)   ; Yes, restore TAB flag for `get' routine
+noTabsInMem:    ld hl,'5.'              ;Reset version number to 2.5
+                ld (tVersie+1),hl       ; when loading a 2.4 settings file
+                call closeBf            ;Close the FCB / file handle
+                call resetBlok          ;Clear block definitions
+                call iniClr             ;Initialise screen
+                pop af
+                ret nz                  ;Done if MSX set was on
+                bit msxK,(iy+savFl)     ;Is MSX char set now turned on?
+                call nz,msxKar          ; Yes, copy the set from ROM
+                ret
+
+                ;Build dos2 .TED extension
+
+MAKETED:        LD DE,path1Buf+1        ;Pathname in DE
+                LD BC,PARSE             ;Parse pathname
+                CALL DOS
+                BIT 4,B                 ;Extension present?
+                JR Z,MA2
+MA1:            LD A,(HL)               ; Yes, find the '.'
+                INC HL
+                CP '.'
+                JR NZ,MA1
+                DEC HL
+                EX DE,HL
+MA2:            EX DE,HL
+                LD (HL),'.'             ;Build .TED extension
+                INC HL
+                LD (HL),'T'
+                INC HL
+                LD (HL),'E'
+                INC HL
+                LD (HL),'D'
+                INC HL
+                LD (HL),0
+                RET
+
+                ;Check version number of settings file, HL = file pos.
+
+CHKVER:         LD DE,0
+                BIT DOS2,(IY-FLAGS5)    ;DOS2?
+                JR NZ,CHV1
+CHKVER1:        LD (BLOK+2),DE          ; No, fill in FCB record number
+                LD (BLOK),HL
+                LD DE,DISKBUF
+                LD C,SETDMA
+                CALL DOS
+                LD DE,FCB
+                LD HL,3                 ;Read 3 bytes
+                LD C,RBREAD
+                CALL DOS
+                OR A
+                JR CHV2
+CHV1:           LD C,SEEK               ;Dos2 entry
+                LD B,(IY+DSKFLG)
+                XOR A
+                PUSH BC
+                CALL DOS                ;Position file pointer at version number
+                POP BC
+                LD DE,DISKBUF
+                LD HL,3
+                LD C,READFH
+                CALL DOS                ;Read version number into diskbuf
+CHV2:           RET NZ                  ; Failed
+                LD HL,TVERSIE
+                LD DE,DISKBUF
+                LD B,3
+CHV3:           LD A,(DE)               ;Correct TED.COM version?
+                CP (HL)
+                RET NZ                  ; No, => close
+                INC HL
+                INC DE
+                DJNZ CHV3
+                RET
+
+                ;Save colours into the system area
+
+SAVCOL:         LD A,1                  ;Get colour numbers
+SC1:            PUSH AF
+                CALL GETPLT             ;Get palette
+                POP AF
+                PUSH AF
+                LD HL,COLORS-2
+                ADD A,A                 ;2 bytes per colour (1.5 nibble)
+                LD D,0
+                LD E,A
+                ADD HL,DE               ;Compute pos. in colour table
+                LD (HL),B               ;Save red and blue
+                INC HL
+                LD (HL),C               ;Save green
+                POP AF
+                INC A
+                CP 5                    ;Up to colour 5
+                JR C,SC1
+                RET
+
+SAVDEF:         CALL SAVCOL             ;Get colour numbers
+                LD HL,DEFFCB
+                LD DE,FCB
+                LD BC,DEFEND-DEFFCB
+                LDIR                    ;Fill TED.COM into FCB
+                LD DE,FCB
+                LD C,OPEN
+                CALL DOS
+                OR A
+                JP NZ,NOTFOUND          ;TED.COM not found...
+                LD HL,1
+                LD (GROOTTE),HL
+                LD HL,TVERSIE-100H      ;Check version
+                LD DE,0
+                CALL CHKVER1
+                JR NZ,SDF3              ;Wrong version => error
+                LD DE,STARTVAR
+                LD C,SETDMA             ;Set start address
+                CALL DOS
+                LD HL,SDF2
+                PUSH HL
+                LD HL,(TOCHK)
+                JP (HL)                 ;Verify checksum
+SDF2:           LD HL,STARTVAR-100H     ;Write into pos STARTVAR
+                LD (BLOK),HL
+                LD HL,ENDVAR-STARTVAR   ;HL = length
+                LD DE,FCB
+                LD C,RBWRITE
+                CALL DOS
+                OR A
+SDF3:           JP NZ,VERSERR           ;Wrong TED version
+                LD DE,FCB
+                LD C,CLOSE
+                JP DOS
+
+                ;Mark the start of a block
+
+STARTBLOK:      LD HL,(CSRNUM)
+                LD (BSTARTLN),HL
+                LD A,(IY+XPOS)
+                ADD A,(IY+OFFSET)
+                DEC A
+                LD (IY-BSRTPOS),A       ;Xpos of first row
+STB1:           JP SETBOUW              ;Show the block
+
+                ;Mark the end of a block
+
+ENDBLOK:        LD HL,(CSRNUM)
+                LD (BENDLN),HL
+                LD A,(IY+XPOS)
+                ADD A,(IY+OFFSET)
+                DEC A
+                LD (IY-BENDPOS),A       ;Xpos of last row
+                JR STB1
+
+                ;Clear block definition
+
+RESETBLOK:      LD HL,0
+                LD (BSTARTLN),HL
+                LD (BENDLN),HL
+                LD (IY-BSRTPOS),L
+                LD (IY-BENDPOS),L
+                JR STB1
+
+                ;Copy a block
+
+COPYBLOK:       RES MOVE,(IY-FLAGS4)    ;Clear block-move flag
+                LD HL,(BSTARTLN)
+                LD DE,(BENDLN)
+                CALL DCOMPR             ;Is there a block defined?
+                JR C,CPB
+                JP NZ,BEEP
+                LD A,(IY-BSRTPOS)
+                SUB (IY-BENDPOS)
+                JP NC,BEEP              ; No, => return
+CPB:            EX DE,HL
+                LD HL,(CSRNUM)
+                CALL DCOMPR             ;Cursor inside the block?
+                JR C,CPD                ; No, => CPD
+                JR NZ,CPC
+                LD A,(IY+XPOS)
+                ADD A,(IY+OFFSET)
+                DEC A
+                CP (IY-BSRTPOS)
+                JR C,CPD
+                JR Z,CPD
+CPC:            LD DE,(BENDLN)
+                CALL DCOMPR
+                JP C,BEEP
+                JR NZ,CPD
+                LD A,(IY+XPOS)
+                ADD A,(IY+OFFSET)
+                DEC A
+                CP (IY-BENDPOS)
+                JP C,BEEP               ; Yes, => do not copy onto itself
+
+cpD:            ld hl,tMoment
+                call message            ;One moment...
+                set dispOff,(iy-flags5) ;No scrolling etc.
+                ld hl,0
+                ld (curBReg),hl         ;Current line within block = 0
+                ld a,(iy+savFl2)
+                push af
+                ld a,(iy+tabSav)
+                push af
+                res uitVul,(iy+tabSav)  ;Do not right-justify
+                res edit,(iy+savFl2)    ;Do not strip spaces
+                call retIns             ;Split destination line in two
+                pop af
+                ld (iy+tabSav),a
+                pop af
+                ld (iy+savFl2),A
+                call opslaan            ;Save line
+                ld hl,(csrNum)
+                ld (movSrt),hl          ;Start of new block (for MOVEBLOK)
+                dec hl
+                ld (csrNum),hl          ;Pre-decrement by 1
+
+                LD HL,(BENDLN)
+                LD DE,(BSTARTLN)
+                OR A
+                SBC HL,DE               ;Compute number of lines
+                LD (MOVLEN),HL          ;Save for MOVEBLOK
+CPE:            LD DE,(BSTARTLN)        ;Get number
+                LD HL,(CURBREG)
+                ADD HL,DE
+                EX DE,HL
+                LD HL,STRBUF
+                CALL GET                ;Fetch line
+                LD HL,(CSRNUM)          ;Get destination
+                INC HL
+                LD (CSRNUM),HL          ;Bump destination row
+                CALL ADDLINE            ;Insert the line
+                LD HL,(CURBREG)
+                INC HL                  ;Bump block-row counter
+                LD (CURBREG),HL
+                LD DE,(BSTARTLN)
+                ADD HL,DE
+                EX DE,HL
+                LD HL,(BENDLN)
+                CALL DCOMPR             ;Done?
+                JR NC,CPE               ; No, => next line
+                LD H,(IY-BSRTPOS)
+                PUSH HL                 ;Save start & end positions
+                LD B,(IY-BENDPOS)
+                PUSH BC
+                BIT MOVE,(IY-FLAGS4)    ;Move block?
+                JP NZ,MOVE2             ; Yes, => return
+
+COPMOV:         POP BC                  ;2nd entry for moveblok
+                LD (IY+OFFSET),0
+                INC B
+                LD (IY+XPOS),B          ;Place cursor at block end
+                DEC B
+                LD A,(STRBUF)
+                SUB B                   ;lineLen-blockEnd was copied too much
+                JR NC,CPF
+                XOR A
+CPF:            INC A                   ;One extra delete so the lines get
+                LD B,A                  ; pasted back together
+CPG:            PUSH BC
+                CALL DELETE
+                POP BC
+                DJNZ CPG
+                CALL OPSLAAN
+                LD HL,(MOVSRT)
+                LD (CSRNUM),HL          ;Back to the start row
+                EX DE,HL
+                LD HL,STRBUF
+                CALL GET
+                POP BC                  ;Get start position
+                INC B                   ;One extra backspace
+                LD (IY+OFFSET),0
+                LD (IY+XPOS),B          ;Place cursor at block start
+                res vir,(iy-flags6)     ;No more virtual cursor
+CPH:            push bc
+                call bSpace
+                pop bc
+                djnz cpH
+                call opslaan
+                res dispOff,(iy-flags5) ;Re-enable screen rebuilds
+                ld hl,(csrNum)
+                jp goLine2              ;Done
+
+
+; wisBlok
+;
+; Erases a marked block of text
+;
+wisBlok:        call zeker              ;Confirm?
+                ret c                   ; No, => return
+                call evtOpslaan
+                set sav,(iy+flags1)     ;Save before stopping
+                res move,(iy-flags4)    ;Not invoked from MoveBlok
+
+                ld hl,tMoment
+                call message            ;One moment...
+
+wb2:            ld hl,(bStartLn)
+                ld de,(bEndLn)
+                call dCompr             ;Is there a block defined?
+                jr c,wb2b
+                jp nz,beep
+                ld a,(iy-bSrtPos)
+                sub (iy-bEndPos)
+                jp nc,beep              ; No, => return
+wb2b:           ld (csrNum),hl
+
+                set dispOff,(iy-flags5) ;No screen rebuild, no scroll, etc.
+                ld a,(iy+tabSav)
+                push af
+                res uitVul,(iy+tabSav)  ;Do not right-justify
+                ld (iy+offSet),0
+                ld a,(iy-bSrtPos)       ;Place cursor at block start
+                inc a
+                ld (iy+xPos),a
+                ex de,hl
+                ld hl,strbuf
+                call get
+                call retIns             ;Block start onto the next line
+                call opslaan
+                ld hl,(bEndLn)
+                ld (csrNum),hl
+                ld (iy+offset),0
+                ld a,(iy-bEndPos)       ;Place cursor at block end
+                inc a
+                ld (iy+xPos),a
+                ex de,hl
+                ld hl,strBuf
+                call get
+                call retIns             ;Block end onto the next line
+                ld (iy-bEndPos),0       ; and zero it out in advance
+                call opslaan
+                pop af
+                ld (iy+tabSav),a        ;Restore right-justify flag
+
+                ld de,(bStartLn)        ;Start at the front of the block
+
+delFirstLine:   push de                 ;Save block start
+                push de                 ;Save current line
+
+                call zoekNum            ;Find first line
+                pop de                  ;Get current line
+                jp c,delBlkDone         ; => done
+
+                push de                 ;Save current line
+
+                ld (iy-firstDataSeg),-1 ;First data segment still unknown
+
+                ld de,0                 ;Number of pointers to remove
+                ld (aantDelPnt),de
+
+                ld (firstPntAddr),ix    ;Address of the first pointer
+
+                ld a,(iy+curTab)        ;Get pointer segment
+                ld (iy-firstPntSeg),a
+
+                jr chkLineData          ;Set string-data addresses
+
+chkDelLineLp:   inc de
+                push de                 ;Line to remove in DE
+                call zoekNum            ;Find line in data memory
+                jr c,delBlock           ; Last line, => erase block
+
+chkLineData:    inc c
+                dec c                   ;String length 0?
+                jr z,chkPointer         ; Yes, => only check pointer segment
+
+                ld a,(iy-firstDataSeg)  ;Is a data segment already known?
+                inc a
+                jr nz,chkDataAddr       ; Yes, => check whether address is contiguous
+
+                ld a,(iy+curMap)        ; No, get data segment
+                ld (iy-firstDataSeg),a
+
+                ld (firstDataAddr),hl   ;Set start address of first string
+
+                jr endDataChk           ;Compute address of next string
+
+chkDataAddr:    ld a,(iy+curMap)
+                cp (iy-firstDataSeg)    ;Same data segment?
+                jr nz,delBlock          ; No, => erase block of lines
+
+                ld de,(nextDataAddr)    ;Contiguous string?
+                call dCompr
+                jr nz,delBlock          ; No, => erase preceding block
+
+endDataChk:     ld a,(iy+curTab)        ;Get current pointer segment
+                cp (iy-firstPntSeg)     ;Same as the previous segment?
+                jr nz,delBlock
+
+                add hl,bc               ; Yes, compute address where the next
+                ld (nextDataAddr),hl    ;  string should start
+
+                jr incPointer
+
+chkPointer:     ld a,(iy+curTab)        ;Get current pointer segment
+                cp (iy-firstPntSeg)     ;Same as the previous segment?
+                jr nz,delBlock
+
+incPointer:     ld hl,(aantDelPnt)      ;Bump number of pointers to remove
+                inc hl
+                ld (aantDelPnt),hl
+
+                pop de                  ;Get current line number
+
+chkEndBlk:      ld hl,(bEndLn)
+                call dCompr             ;BlockStart = BlockEnd?
+                jr nz,chkDelLineLp      ; No, => check next contiguous run
+
+                ld hl,(aantDelPnt)      ;Number of lines to remove
+                ld a,h
+                or l
+                jr z,delBlkDone         ; Zero, => done
+
+                push de                 ;Dummy, prevent stack underflow
+
+delBlock:       pop de                  ;Get current line
+                ld hl,(bEndLn)          ;Get last line
+                or a
+                sbc hl,de               ;That many lines still to remove
+                call regNum             ;Show count of lines still to remove
+
+                pop de                  ;Get block start
+                push de                 ;Save block start
+
+                ld bc,delBlkRet
+                push bc                 ;Save return address
+
+                ld bc,(firstDataAddr)   ;Get and save
+                push bc                 ; string-data start address
+
+                ld l,(iy-firstDataSeg)  ;Get data segment
+                inc l                   ;Valid segment? (-1 = invalid)
+                ld h,l                  ;   Pre-set data length [HL] to 0
+                jr z,delPntOnly         ; No, => only erase pointers
+
+                ld hl,(nextDataAddr)    ; Yes, compute number of bytes to erase
+                or a
+                sbc hl,bc               ;Compute string length in HL
+delPntOnly:     push hl                 ;Save string length
+
+                ld hl,(firstPntAddr)
+                push hl                 ;Pointer address
+
+                ld a,(iy-firstPntSeg)
+                ld (iy+curTab),a
+                call mmOut              ;Switch in pointer segment
+
+                ld a,(iy-firstDataSeg)
+                ld (iy+curMap),a        ;String data segment
+
+                ld hl,(aantDelPnt)      ;Number of lines to remove
+                jp delLines             ;Erase the lines
+
+delBlkRet:      pop de                  ;Get block start
+
+                ld hl,(bEndLn)
+                inc hl
+                call dCompr             ;BlockStart = BlockEnd + 1?
+                jp nz,delFirstLine      ; No, => start a new block
+
+                push de                 ; Done, dummy on stack
+
+delBlkDone:     pop hl                  ;Drop block start
+                ld hl,(bEndLn)
+                inc hl
+                call gotoLine
+                call resetBlok          ;Discard block definition
+                call bSpace             ;Stitch the end back to the start
+                bit move,(iy-flags4)    ;Called by block-move?
+                ret nz                  ; Yes, => do not rebuild screen yet
+                res dispOff,(iy-flags5) ; No, re-enable screen rebuilds
+                ret
+
+
+; moveBlok
+;
+; Move a block
+;
+MOVEBLOK:       LD HL,(BSTARTLN)
+                LD DE,(BENDLN)
+                CALL DCOMPR             ;Is there a block defined?
+                JR C,MB1
+                JP NZ,BEEP
+                LD A,(IY-BSRTPOS)
+                SUB (IY-BENDPOS)
+                JP NC,BEEP              ; No, => return
+MB1:            EX DE,HL
+                LD HL,(CSRNUM)
+                CALL DCOMPR             ;Cursor inside the block?
+                JR C,MB2                ; No, => MB2
+                JR NZ,MB1B
+                LD A,(IY+XPOS)
+                ADD A,(IY+OFFSET)
+                DEC A
+                CP (IY-BSRTPOS)
+                JR C,MB2
+                JR Z,MB2
+MB1B:           LD DE,(BENDLN)
+                CALL DCOMPR
+                JP C,BEEP
+                JR NZ,MB2
+                LD A,(IY+XPOS)
+                ADD A,(IY+OFFSET)
+                DEC A
+                CP (IY-BENDPOS)
+                JP C,BEEP               ; Yes, => do not copy onto itself
+MB2:            SET MOVE,(IY-FLAGS4)    ;Flag for copyblok
+                JP CPD                  ;Copy to cursor
+
+MOVE2:          LD HL,(MOVSRT)          ;Entry point after block-copy
+                LD DE,(BSTARTLN)
+                PUSH HL
+                OR A
+                SBC HL,DE               ;Cursor after block?
+                PUSH AF                 ; Yes, => F = NC
+                CALL WB2                ;Erase old block
+                CALL OPSLAAN            ;Save last line
+                POP AF
+                POP HL
+                LD BC,(MOVLEN)
+                JR C,MB3                ;Do not shift cursor
+                OR A
+                SBC HL,BC               ;Cursor up because block was erased
+MB3:            LD (BSTARTLN),HL
+                LD (MOVSRT),HL
+                LD (IY-BSRTPOS),0
+                INC BC
+                ADD HL,BC               ;Move to end of block
+                LD (BENDLN),HL
+                LD (IY-BENDPOS),0       ;Fill in block-end position
+                DEC HL
+                CALL GOTOLINE
+                JP COPMOV               ;Finish the copy
+
+
+; IndentBlok
+;
+; F5/Inspring (indent)
+; Shift text lines to the right or to the left
+;
+indentBlok:     call evtOpslaan
+                ld hl,tIndent
+                ld c,3
+                call invoer             ;Show small indent menu
+
+indMenuLp:      ld l,(iy+minLin)
+                ld h,xAantPos           ;Get x-pos of the "count" text
+                ld (csry),hl
+                ld a,(iy+aantIndent)    ;Indent amount
+                or a                    ;Zero? (can happen with old .TED file)
+                jr nz,indNotZero
+                inc a                   ; Yes, change to 1
+                ld (iy+aantIndent),a
+indNotZero:     call bcdSet             ;Show indent amount
+
+                ld hl,tKeuze
+                call message
+                ld hl,indAdr
+                ld bc,indKar
+                ld a,1                  ;Show cursor
+                call getCmd             ;Wait for key
+                jr indMenuLp            ;And show new settings
+
+
+; F5/Inspring jump table
+;
+indAdr:         dw menuESC              ;ESCape
+                dw setIndPos            ;Adjust number of positions
+                dw doLeftInd            ;Indent left
+                dw doRightInd           ;Indent right
+
+setIndPos:      ld d,xAantPos           ;External, LD DE,256*x is not allowed
+                ld e,0
+                call menuXY             ;Locate x,0
+                ld a,(iy+aantIndent)
+                call getONr             ;Get indent value
+                ret z
+                ld (iy+aantIndent),l
+                ret
+
+; Shift to the left
+;
+doLeftInd:      set indDir,(iy+savFl3) ;Indent direction = left
+                jr doIndent
+
+; Shift to the right
+;
+doRightInd:     res indDir,(iy+savFl3) ;Indent direction = right
+
+; Perform the block-shift action
+;
+doIndent:       pop hl                  ;Drop return address to menu loop
+
+                ld (iy-bSrtPos),0       ;Set block start to zero
+                ld hl,(bEndLn)
+                ld a,(iy-bEndPos)
+                or a                    ;Xpos block-end > 1st char?
+                jr z,chkIndBlk
+                inc hl                  ; Yes, bump last line by 1
+                ld (bEndLn),hl
+                ld (iy-bEndPos),0
+
+chkIndBlk:      set sav,(iy+flags1)     ;Save before stopping
+
+                ld de,(bStartLn)
+indentLp:       ld hl,(bEndLn)
+                scf                     ;Block end = 1 line past block end
+                sbc hl,de               ;HL = number of lines
+                jp c,toCurLine          ;Last line done
+
+                push de                 ;Save current line
+                call regNum             ;Show HL = lines remaining
+
+                pop de                  ;DE = current line
+                push de
+                ld hl,strBuf            ;HL = storage buffer, low byte = 0
+                call get                ;Get the line
+
+                ld a,(hl)               ;Get string length, max 254
+                or a                    ;Empty line?
+                jr z,indNextLine        ; Yes, => skip this one
+
+                bit indDir,(iy+savFl3)  ;Insert or remove spaces?
+                jr nz,moveToLeft        ; => Remove
+
+                ld c,a                  ;Remember length in C
+                inc a                   ;Makes overflow check easier
+                add a,(iy+aantIndent)   ;Add number of spaces to insert
+                jr nc,noIndOverflow     ; => no overflow
+                ld a,255                ;Overflow, line becomes max length + 1
+noIndOverflow:  dec a                   ;Restore length
+                ld e,a                  ;Remember in E
+                sub (hl)                ;Compute number of spaces to insert
+                jr z,indNextLine        ;Line full => next line
+                ld (hl),e               ;Fill in new length
+                ld d,high strBuf        ;DE = new end of line
+                ld l,c                  ;HL = old end of line
+                ld b,0                  ;BC = old length of line
+                lddr                    ;Shift line to the right
+indAddSpace:    inc hl                  ;To 1st char, skip length byte
+                ld (hl),' '             ;Pad with spaces
+                dec a                   ;A = number of spaces
+                jr nz,indAddSpace
+
+indStoreLine:   pop de                  ;Get line number
+                push de
+                ld hl,strBuf
+                call put                ;Save line
+indNextLine:    pop de
+                inc de                  ;To next line
+                jr indentLp
+
+moveToLeft:     ld c,a                  ;Line length in C
+                ld b,(iy+aantIndent)    ;Number of spaces to remove
+                ld d,0                  ;Number of spaces found
+indTstSpc:      inc hl
+                ld a,(hl)               ;Is there actually a space at the
+                cp ' '                  ; start of the line?
+                jr nz,indNoSpc          ; No, => erase up to here
+                inc d                   ;Number of spaces found
+                djnz indTstSpc
+                inc hl                  ;To 1st char after the spaces
+
+indNoSpc:       inc d                   ;Zero spaces found?
+                dec d
+                jr z,indNextLine        ; Yes, => nothing to erase
+
+                ld a,c                  ;Line length
+                sub d                   ;Compute new line length
+                ld (strBuf),a           ;Fill in
+                jr z,indStoreLine       ;Line empty => done
+
+                ld b,0                  ;Line length in BC
+                ld c,a
+                ld de,strBuf + 1        ;Line start in DE
+                ldir                    ;Erase the spaces
+                jr indStoreLine         ;Save line
+
+
+                ;Print line number HL
+
+REGNUM:         EX DE,HL
+REGNUMDE:       LD HL,VRMREG            ;Locate 18,0
+                CALL NSTWRT
+                EX DE,HL
+                PUSH HL
+                INC HL
+                CALL DECI               ;Place line number on screen
+                POP HL
+                RET
+
+                ;Insert a screen row
+
+INSREG:         bit dispOff,(iy-flags5) ;Screen rebuild active?
+                ret nz                  ; No, => no scroll
+
+                ld a,(iy+maxLin)
+                cp (iy+yPos)            ;Bottom row (NC = yes)?
+                bit bouw,(iy-flags4)    ; Is the screen already being rebuilt?
+                jr nc,in2               ;    Not bottom row => scroll down
+                jr nz,in1               ;  Yes, => no scroll down
+
+                ld l,(iy+minLin)        ;Remove row L (top row)
+
+scrlUp:         bit dispOff,(iy-flags5) ;Screen rebuild active?
+                ret nz                  ; No, => no scroll up
+
+                push af                 ;Carry flag set when YPOS = MAXLIN
+                push hl
+                ld a,(iy+maxLin)        ;Bottom row
+                sub l                   ;L = number of rows to shift
+                jr z,in0                ;Zero rows => quick exit
+                LD HL,10
+                LD D,H
+                LD E,A
+                CALL MUL16              ;Compute number of bytes to shift
+                LD D,H                  ;D=0
+                EX (SP),HL
+                LD E,L                  ;E = (IY+MINLIN)
+                EX (SP),HL
+                PUSH HL
+                LD HL,10
+                CALL MUL16              ;Compute VRAM source address
+                LD DE,(TXTCOL)
+                ADD HL,DE
+                POP BC
+                PUSH BC
+                PUSH HL
+                LD DE,DISKBUF           ;Into diskbuf
+                XOR A
+                CALL NLDRMV             ;Pull out of vram
+                POP HL
+                LD DE,10
+                OR A
+                SBC HL,DE               ;1 row up
+                EX DE,HL
+                POP BC
+                LD HL,DISKBUF
+                CALL NLDVM0             ;Put back 1 row higher
+IN0:            POP HL                  ;Get row into L
+                CALL DELLNO             ;Erase row L
+                POP AF
+IN0B:           RET NC                  ;Not the bottom row
+IN1:            LD A,(IY+MAXLIN)        ;Cursor not too low
+                LD (IY+YPOS),A
+                LD (CSRY),A
+                RET
+IN2:            RET NZ
+                LD A,(IY+MAXLIN)
+                SUB (IY+YPOS)
+                JR Z,IN3
+                LD HL,10
+                LD D,H
+                LD E,A
+                CALL MUL16              ;Compute number of color bytes
+                PUSH HL                 ; to shift
+                LD HL,10
+                LD D,H
+                LD E,(IY+YPOS)
+                DEC E
+                CALL MUL16              ;Compute VRAM source address
+                LD DE,(TXTCOL)
+                ADD HL,DE
+                POP BC
+                PUSH BC
+                PUSH HL
+                LD DE,DISKBUF           ;Into diskbuf
+                XOR A
+                CALL NLDRMV             ;Pull out of vram
+                POP HL
+                LD DE,10
+                ADD HL,DE               ;1 row down
+                EX DE,HL
+                POP BC
+                LD HL,DISKBUF
+                CALL NLDVM0             ;Put back 1 row lower
+IN3:            LD L,(IY+YPOS)
+                JP INSLNO               ;Insert row
+
+                ;Ask for user name
+
+GETNAME:
+
+if              not (DEMO or AUTODEMO)
+
+                LD C,5
+                LD HL,TGETNAME          ;Text on screen
+                CALL INVOER
+                LD E,0
+                LD B,40                 ;40 chars = max
+                CALL GETTXT
+                LD B,0
+                ADD HL,BC               ;Compute buffer end
+                LD DE,TNAME-2           ;Fill name in reversed
+                INC DE
+                INC DE
+                LD A,C
+                CP 5                    ;Too few characters?
+                JP C,ERROR              ; Yes, => return
+                LD (DE),A
+                INC DE
+GTC1:           LD A,(HL)
+                XOR CRYPTBYTE           ;Encode while we are at it
+                LD (DE),A
+                DEC HL
+                INC DE
+                DEC C
+                JR NZ,GTC1
+                JP TOCODE               ;On to GETCODE
+endif
+
+                ;Multiply HL by DE, result in HL
+
+MUL16:          LD C,L
+                LD B,H
+                LD HL,0
+                LD A,15
+MLP:            SLA E
+                RL D
+                JR NC,MLP1
+                ADD HL,BC
+MLP1:           ADD HL,HL
+                DEC A
+                JR NZ,MLP
+                OR D
+                RET P
+                ADD HL,BC
+                RET
+
+                ;Divide HL by DE, result in HL, remainder in DE
+
+DIV16:          LD C,L
+                LD A,H
+                LD HL,0
+                LD B,16
+                OR A
+DVLOOP:         RL C
+                RLA
+                RL L
+                RL H
+                PUSH HL
+                SBC HL,DE
+                CCF
+                JR C,DROP
+                EX (SP),HL
+DROP:           INC SP
+                INC SP
+                DJNZ DVLOOP
+                EX DE,HL                ;DE = remainder
+                RL C
+                LD L,C
+                RLA
+                LD H,A                  ;HL = quotient
+                OR A
+                RET
+
+                ;Decimal ASCII to binary in HL
+
+DECTOBIN:       LD HL,0
+                LD DE,BUF
+                LD A,(DE)
+                OR A
+                RET Z
+                LD B,A                  ;B = length
+                INC DE
+DB1:            LD A,(DE)
+                SUB '0'
+                PUSH DE
+                LD D,H
+                LD E,L
+                ADD HL,HL
+                ADD HL,HL
+                ADD HL,DE
+                ADD HL,HL
+                LD E,A
+                LD D,0
+                ADD HL,DE
+                POP DE
+                INC DE
+                DJNZ DB1
+                RET
+
+                ;Convert BCD from buffer to binary in A
+
+CNVBCD:         LD HL,BUF+1
+                LD A,(BUF)
+                LD B,A
+                LD C,0                  ;C = hundreds
+                OR A
+                SCF
+                RET Z
+                CP 4
+                CCF
+                RET C
+                LD A,B
+                CP 3
+                JR C,CB3                ;No hundreds?
+                LD A,(HL)
+                CP '3'
+                CCF
+                RET C
+CB1:            LD A,(HL)
+                CP '0'
+                JR Z,CB2
+                LD A,100
+                ADD A,C
+                LD C,A
+                DEC (HL)
+                JR CB1
+CB2:            INC HL
+CB3:            LD D,0                  ;D = tens + hundreds
+                LD A,B                  ;No tens?
+                CP 2
+                JR C,CB4
+                LD A,(HL)
+                SUB '0'
+                SLA A
+                SLA A
+                SLA A
+                SLA A
+                LD D,A
+                INC HL
+CB4:            LD A,(HL)
+                SUB '0'
+                ADD A,D
+                LD B,A                  ;Convert BCD value
+                AND 0F0H
+                RRCA
+                LD D,A
+                RRCA
+                RRCA
+                ADD A,D
+                LD D,A
+                LD A,B
+                AND 0FH
+                ADD A,D                 ;Add tens
+                ADD A,C                 ;Add hundreds
+                RET
+
+                ;Print HL as a decimal number
+
+DCSET:          CALL SETVDP             ;Make the VDP ready
+DECI:           OR A                    ;NC=Print on screen
+                JR DECI3
+DECI2:          SCF                     ;Only into DCBUF
+DECI3:          PUSH AF
+                LD DE,DCBUF
+                LD B,5
+                LD A,' '
+DC1:            LD (DE),A               ;Clear the buffer
+                INC DE
+                DJNZ DC1
+DC2:            LD E,0
+                LD B,16
+                OR A
+DC3:            RL L
+                RL H
+                RL E
+                LD A,E
+                SUB 10
+                CCF
+                JR NC,DC4
+                LD E,A
+DC4:            DJNZ DC3
+                RL L
+                RL H
+                LD A,E
+                ADD A,'0'
+                PUSH HL
+                LD HL,DCBUF+4
+                LD DE,DCBUF+5
+                LD BC,5
+                LDDR
+                LD (DCBUF),A
+                POP HL
+                LD A,H
+                OR L
+                JR NZ,DC2
+                POP AF                  ;Was result wanted only in DCBUF?
+                RET C                   ; Yes => Done
+                LD B,5
+PRDECI:         LD HL,DCBUF
+                INC HL
+                LD C,(IY+VDPWRITE)
+                LD A,(HL)
+                CP ' '
+                JR NZ,DC5
+                OUT (C),A               ;Start with a space
+                DEC B
+DC5:            DEC HL
+DC6:            LD A,(HL)
+                OUT (C),A
+                INC HL
+                DJNZ DC6
+                LD A,' '
+                OUT (C),A
+                RET
+
+                ;Print current filename in the status bar
+
+PRTSAV:         LD L,4
+                BIT COMLIN,(IY+TABSAV)
+                JR NZ,PSA0
+                LD L,2                  ;Filename below the command bar
+PSA0:           LD H,40-32              ;Centre around col. 40 (64 chars / 2)
+                LD (CSRY),HL
+                CALL SETVDP             ;Set the write address
+                LD HL,SAVNAM            ;HL=Filename
+                LD A,(HL)               ;Fetch string length
+                NEG
+                JR NZ,PSA0C             ;Length > 0 => Space before and after name
+                LD B,64
+                JR PSA1B                ;Length = 0 => Just draw the line
+PSA0C:          ADD A,63                ;A=63-A
+                SRL A                   ;A=A\2
+                PUSH AF
+                CALL PSA1               ;Dashes before the name
+                LD A,' '
+                OUT (C),A               ;And one space
+                CALL PS1                ;Print the name
+                LD A,' '
+                OUT (C),A
+                POP AF                  ;Dashes after = dashes before
+                INC A                   ; plus 1 for the remainder (after SRL A)
+PSA1:           OR A
+                RET Z
+                LD B,A
+PSA1B:          LD A,17H                ;Fill remainder with dashes
+                LD C,(IY+VDPWRITE)
+PSA2:           OUT (C),A
+                DJNZ PSA2
+                RET
+
+                ;Print a length-prefixed string at (HL)
+
+PRTSTR:         CALL SETVDP
+PS1:            LD A,(HL)               ;Fetch buffer length
+                OR A
+                RET Z
+                LD B,A
+PS2:            LD C,(IY+VDPWRITE)
+PS3:            INC HL
+                LD A,(HL)
+                OUT (C),A
+                DJNZ PS3
+                RET
+
+                ;Print a string on the screen from (DE)
+
+STROUT:         PUSH DE                 ;Source string lives in RAM, not VRAM
+                CALL SETVDP             ;Set the write address
+                LD HL,CSRX
+                LD C,(IY+VDPWRITE)
+                POP DE
+STRO2:          LD A,(DE)
+                INC DE
+                CP NUL                  ;Done?
+                RET Z
+                CP CR
+                JR Z,STRO3
+                CP LF
+                JR Z,STRO4              ;Move to next line
+                CP TAB
+                JR Z,STRO5              ;Advance to tab
+                OUT (C),A
+                INC (HL)
+                JR STRO2
+STRO3:          LD A,1
+                LD (CSRX),A
+                JR STROUT
+STRO4:          LD HL,CSRY
+                INC (HL)
+                JR STROUT
+STRO5:          LD A,' '
+                OUT (C),A
+                INC (HL)
+                LD A,(HL)
+                DEC A
+STRO6:          SUB 8                   ;Move to next multiple of 8
+                JR C,STRO5              ;Need another space
+                JR NZ,STRO6
+                LD A,(HL)
+                CP 81
+                JR C,STROUT             ;Reached the tab
+                LD (HL),1               ;Wrap to next line
+                JR STRO4
+
+                ;Compute VRAM address from (CSRY)
+
+SETVDP:         PUSH HL
+                PUSH BC
+                PUSH AF
+                LD A,(CSRY)
+                LD B,A
+                LD HL,0-80
+                LD DE,80
+SVD1:           ADD HL,DE               ;Compute VRAM address
+                DJNZ SVD1
+                LD A,(CSRX)
+                DEC A
+                LD E,A
+                ADD HL,DE               ;HL=Cursor address
+                CALL NSTWRT             ;Make VDP ready for writing
+                POP AF
+                POP BC
+                POP HL
+                RET
+
+                ;Memory => VRAM, A=Page HL=Source DE=Dest C=Len
+
+LDRVM2:         INC A
+                CP 8                    ;Page 0?
+                JR NZ,NLDRVM
+NLDVM0:         XOR A                   ;Yes, so make A zero too
+NLDRVM:         LD B,C                  ;B=Length
+                EX DE,HL
+                SET 6,H                 ;Write
+                CALL SETADR             ;Make VDP ready
+                EX DE,HL
+                LD C,(IY+VDPWRITE)
+                OTIR                    ;(HL) => Port
+                RET
+
+                ;VRAM => Memory, A=Page HL=Source DE=Dest C=Len
+
+LDRMV2:         INC A
+                CP 8                    ;Page 0?
+                JR NZ,NLDRMV
+                XOR A                   ;Yes, so make A zero too
+NLDRMV:         LD B,C
+                RES 6,H                 ;Read
+                CALL SETADR             ;Make VDP ready
+                EX DE,HL
+                LD C,(IY-VDPREAD)
+                INIR
+                RET
+
+                ;Set VDP write/read
+
+NSTWRT:         SET 6,H                 ;Write flag
+NSETRD:         XOR A                   ;Set segment number to 0 (SCREEN 0 page)
+SETADR:         RES 7,H                 ;Clear "write register flag"
+                DI
+
+                LD C,(IY-VDPCW)
+                OUT (C),A               ;[A]=Screen segment nr.
+
+                LD A,14+128
+                OUT (C),A               ;ACTIVE offset
+                OUT (C),L
+                OUT (C),H
+
+             ;; EI                      ;Disabling interrupts is safer because TSRs
+                RET                     ; could otherwise clobber the VRAM pointer
+
+                ;Chput + INC(CSRX)
+
+NCHPTI:         CALL NCHPUT
+                PUSH HL
+                LD HL,CSRX
+                INC (HL)
+                POP HL
+                RET
+
+                ;Place a character on screen
+
+NCHPUT:         PUSH DE
+                PUSH BC
+                PUSH AF
+                CALL SETVDP
+                LD C,(IY+VDPWRITE)
+                POP AF
+                OUT (C),A
+                POP BC
+                POP DE
+                RET
+
+                ;Fetch a character from keyboard / data file
+
+nChGet:
+
+if              autoDemo                ;Read from file when auto-run demo
+
+                ext AUTOFCB
+
+                push hl                 ;Save all regs
+                push de
+                push bc
+                bit csr,(iy+tabSav)     ;Colour cursor in use?
+                jr z,chg4               ; No, => Show chr(255)
+
+                ;Place colour cursor on screen
+
+                ld bc,(csrY)
+                call clrAdr             ;Fetch address & bit position
+                jr z,auto_rorDone       ; Bit 7? => DP4
+auto_rorLp:     srl b                   ; No, shift [B] one pos to the right
+                dec a                   ;Decrement counter
+                jr nz,auto_rorLp        ;Not done? => Try again
+auto_rorDone:   LD A,C                  ;Fetch the colour byte
+                PUSH AF
+                PUSH HL
+                XOR B                   ;Invert cursor
+                CALL NWRVRM             ;Write the new colour byte
+                call chkAutoQuit        ;Check whether <ESC> was pressed
+                pop hl                  ;Restore cursor address
+                pop af                  ;Erase the cursor again
+                call nWrVrm             ;Write old byte back
+
+chg3:           LD DE,DFBUF             ;Character into data-file buffer
+                LD C,SETDMA
+                CALL DOS
+                LD DE,AUTOFCB           ;Fetch character from data file
+                LD HL,1
+                LD C,RBREAD
+                CALL DOS
+                LD A,H
+                OR L                    ;Nothing read?
+                JP Z,toDos              ; Yes, => Back to DOS
+                LD A,(DFBUF)
+                POP BC                  ;Restore regs
+                POP DE
+                POP HL
+                RET
+
+
+CHG4:           LD A,2
+                LD (ESCCNT),A           ;VT-52 <ESC> 'y' 5
+                LD A,'5'
+                CALL CHPUT              ;Place cursor on the screen
+CHG5:           call chkAutoQuit        ;Show clock, test for ESC
+                LD A,1
+                LD (ESCCNT),A           ;VT-52 <ESC> 'x' 5
+                LD A,'5'
+                CALL CHPUT
+                JR CHG3
+
+; chkAutoQuit
+;
+; In the auto-run demo build, test whether the <ESC> key was pressed.
+; If so, return to DOS.
+; Also wait until at least 4/50 second has passed since the previous
+; character was read from the data file.
+;
+; Out: A = Character from data file
+;
+chkAutoQuit:    call int                ;Show clock
+                call enaVdpInt          ;Re-enable VDP interrupts
+              ;;call chsns              ;Does not work in autodemo mode!
+                di                      ;Prevent a TSR from messing with the
+                ld hl,(getPnt)          ; keyboard buffer
+                ld de,(putPnt)
+                ei                      ;But it is also nice that something
+                or a                    ; can occasionally still be placed
+                sbc hl,de               ; into the buffer
+                jr z,noAutoQuit         ; Nothing, => Fetch character from disk
+                call chGet              ;Fetch character from buffer
+                cp esc                  ;ESCape pressed?
+                jp z,toDos              ; Yes, => Back to DOS
+noAutoQuit:     ld hl,autoCnt
+                ld a,(hl)
+                cp 4                    ;Fetch wait counter (interrupt)
+                jr c,chkAutoQuit        ;Must be at least 4
+                ld (hl),0               ;Reset to zero
+                ret
+
+else                                    ;Fetch character from keyboard
+                CALL CHSNS              ;Character already available?
+                JP NZ,CHGET             ; Yes, => Fetch directly
+                PUSH HL                 ;Save all regs
+                PUSH DE
+                PUSH BC
+DP2:            CALL DISPCSR            ;Show the cursor
+CHG2:           CALL INT                ;Show clock
+                CALL STOPKEY            ;Check the STOP key (= toggle relay)
+                CALL BLINK              ;Make the cursor blink
+                CALL CHSNS              ;Wait for a key
+                JR Z,CHG2               ; Nothing, => Try again
+                CALL DOERACSR           ;Erase the cursor
+                CALL CHGET              ;Fetch character from buffer
+                POP BC                  ;Restore regs
+                POP DE
+                POP HL
+                RET
+endif
+
+                ;Make the cursor blink
+
+BLINK:          LD A,(BLKON)            ;Fetch the cursor-ON time
+                OR A
+                RET Z                   ;0 => Leave it ON
+                BIT KNIPPER,(IY+SAVFL2) ;Is blinking enabled?
+                RET Z                   ; No, => Leave it ON
+                LD HL,(BLKCNT)          ;Fetch the current counter (interrupt)
+                BIT CSRON,(IY-FLAGS2)   ;Is the cursor currently ON?
+                JR Z,CSROFF             ; No, => Check whether it should turn ON again
+                CP L                    ;Should the cursor go OFF?
+                RET NC                  ; No, => It may stay on a bit longer
+                JR ERACSR               ;Erase the cursor
+CSROFF:         LD A,(BLKOFF)           ; No, fetch cursor-OFF time
+                CP L                    ;Should the cursor turn ON again?
+                RET NC                  ; No, => May stay off a bit longer
+
+                ;Show cursor at CSRX, CSRY
+
+DISPCSR:        SET CSRON,(IY-FLAGS2)   ;Cursor now ON
+                XOR A
+                LD (BLKCNT),A           ;Reset blink counter to 0
+                BIT CSR,(IY+TABSAV)     ;Colour cursor in use?
+                JR Z,DP5                ; No, => Show chr(255)
+INVCSR:         LD BC,(CSRY)            ;Toggle colour cursor on/off
+                CALL CLRADR             ;Fetch address & bit position
+                JR Z,DP4                ; Bit 7? => DP4
+DP3:            SRL B                   ; No, shift [B] one pos to the right
+                DEC A                   ;Decrement counter
+                JR NZ,DP3               ;Not done? => Try again
+DP4:            LD A,C                  ;Fetch the colour byte
+                XOR B                   ;Invert cursor
+                JP NWRVRM               ;Write the new colour byte
+DP5:            LD A,2                  ;Show the 'old' cursor
+                LD (ESCCNT),A           ;VT-52 <ESC> 'y' 5
+                LD A,'5'
+                JP CHPUT                ;Place cursor on the screen
+
+                ;Erase cursor at CSRX, CSRY
+
+ERACSR:         LD A,(BLKOFF)           ;Fetch the cursor-OFF time
+                OR A
+                RET Z                   ; 0 => Always on
+                BIT KNIPPER,(IY+SAVFL2) ;Is blinking enabled?
+                RET Z                   ; No, => Leave it ON
+DoEraCsr:       BIT CSRON,(IY-FLAGS2)   ;Is the cursor already OFF?
+                RET Z                   ; Yes, => Quick exit
+                RES CSRON,(IY-FLAGS2)   ;Flag: Cursor = gone
+                XOR A                   ;Reset cursor blink-time counter to 0
+                LD (BLKCNT),A
+                BIT CSR,(IY+TABSAV)     ;Colour cursor in use?
+                JR NZ,INVCSR            ; Yes, => Toggle current colour byte
+                LD A,1                  ; No, erase the cursor
+                LD (ESCCNT),A           ;VT-52 <ESC> 'x' 5
+                LD A,'5'
+                JP CHPUT
+
+                ;Compute address in colour table
+                ;In:  C=Ypos B=Xpos
+                ;Out: HL=Address, C=VPEEK(HL), B=80H, A=Bit position in [C]
+
+CLRADR:         LD A,B
+                LD B,C
+                LD DE,10                ;10 bytes per row
+                LD HL,-10               ;Start at -10
+CA1:            ADD HL,DE               ;Compute row start
+                DJNZ CA1
+                DEC A
+                LD C,A
+                XOR A                   ;Clear carry
+                SRL C                   ;Divide C by 8, remainder in A
+                RRA
+                SRL C
+                RRA
+                SRL C
+                RRA
+                PUSH AF                 ;Save remainder
+                LD D,0
+                LD E,C
+                ADD HL,DE               ;Add xpos/8 to VRAM address
+                LD DE,(TXTCOL)
+                ADD HL,DE               ;Add colour base
+                CALL NRDVRM             ;Read colour byte into A
+                LD C,A                  ;Save the byte that was read
+                POP AF
+                LD B,5
+CA2:            SRL A                   ;Finish shifting the remainder
+                DJNZ CA2
+                LD B,10000000B          ;Bit mask in B
+                OR A                    ;Done?
+                RET
+
+                ;Check whether the STOP key was pressed; if so, toggle cassette relay.
+                ; Handy when typing along with dictated text
+
+STOPKEY:        LD A,(INTFLG)           ;Fetch STOP-key flag
+                OR A                    ;STOP pressed?
+                RET Z                   ; No, => Done
+                XOR A
+                LD (INTFLG),A           ; Yes, clear it again
+                DEC A                   ;Toggle the cassette motor relay
+                JP STMOTR
+
+
+; ^Left, jump to start of line
+;
+ctrlLeft:       res vir,(iy-flags6)     ;No more virtual cursor
+                jp toRegStart           ;Go to position 1
+
+; ^Right, jump to end of line
+;
+ctrlRight:      res vir,(iy-flags6)     ;No more virtual cursor
+                jp toRegEnd             ;Go to end of line
+
+
+                ;Process ctrl/keypress
+
+control:        ld a,b                  ;Fetch letter
+                cp right                ;Right
+                jr z,ctrlRight
+                cp down                 ;Down
+                jp z,toets1
+                cp up
+                jp z,toets6             ;Up
+                cp left
+                jr z,ctrlLeft           ;Left
+                cp del
+                jp z,removLn            ;Erase line
+                ld a,(newkey+8)
+                rra
+                rra                     ;Home pressed?
+                jp nc,cFormat           ; Yes, reformat from cursor
+                ld a,b                  ;Restore character in A
+                ld hl,comln
+                push hl                 ;Show command bar
+                call noCtrl             ;Make uppercase
+                ld b,a
+                ld c,'^'
+                ld a,' '
+                push bc
+                call cl0                ;Print ^X
+                pop bc
+                res twee,(iy-flags3)    ;No 2 characters needed
+co1:            ld hl,crlTab
+co2:            ld a,(hl)               ;Search the table
+                inc hl
+                cp b
+                jr z,co3                ;Found
+                inc a
+                ret z                   ;Done
+co2b:           inc hl
+                inc hl
+                inc hl
+                jr co2
+CO3:            LD A,(HL)
+                BIT TWEE,(IY-FLAGS3)    ;Examine 2nd character?
+                JR Z,CO4                ; No, => CO4
+                CP C                    ; Yes, test 2nd character
+                JR Z,CO5                ;Found
+                JR CO2B                 ;Try again
+CO4:            OR A                    ;Another character?
+                JR Z,CO5                ; No, => Jump
+                SET TWEE,(IY-FLAGS3)    ; Yes, fetch 2nd character
+                LD A,(IY+XPOS)
+                LD (CSRX),A
+                LD A,(IY+YPOS)
+                LD (CSRY),A
+                CALL NCHGET
+                CALL NOCTRL             ;Make uppercase
+                LD HL,3301H
+                LD (CSRY),HL
+                CALL NCHPUT             ;Print 2nd character
+                CP '0'                  ;Digit?
+                JR C,CO4B
+                CP '9'+1
+                JR NC,CO4B              ; Yes, look up marker
+                LD (IY-MRKNUM),A        ;Save the number
+                LD A,'0'                ;Look for '0'
+CO4B:           LD C,A
+                JR CO1                  ;Look up 2nd letter
+CO5:            INC HL
+                LD A,(HL)
+                INC HL
+                LD H,(HL)
+                LD L,A
+                JP (HL)                 ;Jump to routine
+
+                ;Toggle upper/lowercase and move right
+
+chgCaseR:       call chgCase            ;Toggle case of current character
+ccr1:           call rechts             ;Cursor 1 pos to the right
+                ld a,(iy+xPos)          ;Compute pos of current char
+                add a,(iy+offset)       ;Result = 1-Based
+                dec a                   ;Make 0-Based
+                ld hl,strBuf
+                cp (hl)                 ;Past end of line?
+                jp nc,rechts            ; Yes, => Move to next line
+                inc l                   ;Skip the length byte
+                add a,l                 ;HL becomes pointer to current char
+                ld l,a                  ; H does not change, stays at 0c0h
+                ld a,(hl)               ;Fetch current char
+                call cmpBlank           ;Is it a blank-class character?
+                jr z,ccr1               ; Yes, => Continue searching for next char
+                ret                     ; No, leave cursor where it is
+
+                ;Move left and toggle upper/lowercase
+
+chgCaseL:       call links
+                call chgCase            ;Toggle case of current character
+ccl1:           ld a,(iy+xPos)          ;Compute pos of current char
+                add a,(iy+offset)       ;Result = 1-Based
+                dec a                   ;Start of line?
+                ret z                   ; Yes, => Stay there
+                ld h,high strBuf        ;HL=String buffer
+                ld l,a
+                ld a,(hl)               ;Fetch char to the left of current
+                call cmpBlank           ;Is it a blank-class character?
+                ret nz                  ; No, leave cursor where it is
+                call links              ; Yes, => Continue searching for next char
+                jr ccl1
+
+                ;Toggle upper/lowercase
+
+chgCase:        ld a,(iy+xPos)          ;Compute pos of current char
+                add a,(iy+offset)       ;Result = 1-Based
+                dec a                   ;Make 0-Based
+                ld hl,strBuf
+                cp (hl)                 ;Past end of line?
+                ret nc                  ; Yes, => Done
+                inc l                   ;Skip the length byte
+                add a,l                 ;HL becomes pointer to current char
+                ld l,a                  ; H does not change, stays at 0c0h
+                ld a,(hl)               ;Fetch the character
+                cp 'A'                  ;Is it a letter?
+                ret c                   ; No, => Done
+                cp 'Z'+1                ;Is it an uppercase letter?
+                jr c,doChgCase          ; Yes, => Becomes lowercase
+                cp 'a'
+                ret c
+                cp 'z'+1                ;Lowercase letter?
+                ret nc                  ; No, => Done
+doChgCase:      xor 00100000b           ;Toggle the case bit
+                ld (hl),a               ;Save the character
+                set change,(iy+flags1)  ;Set "line modified" flag
+                ret
+
+                ;Process graph/keypress
+
+GRAPH:          LD A,B                  ;Fetch letter
+                CP LEFT                 ;Left
+                JR Z,CHGCASEL           ; Yes, => Toggle upper/lowercase
+                CP RIGHT                ;Right
+                JR Z,CHGCASER           ; Yes, => Toggle upper/lowercase
+                CP HOME                 ;Centre?
+                JP NZ,MAIN1             ; No, => Just a graphic character
+
+CENTREER:       CALL TOREGSTART         ;Cursor to position 1
+                LD HL,OMLAAG
+                PUSH HL                 ;Will move one line down later
+                LD HL,STRBUF
+                LD A,(HL)               ;Fetch line length
+                OR A                    ;Zero?
+                RET Z                   ; Yes, => Done
+                LD B,A                  ;Strip all leading spaces
+CT1:            INC HL
+                LD A,(HL)
+                CP ' '                  ;Is the character a space?
+                JR NZ,CT2               ; No, => Found start of line
+                DJNZ CT1                ; Yes, => Keep searching
+                RET
+CT2:            SET CHANGE,(IY+FLAGS1)  ;Flag: Line was modified
+                EX DE,HL
+                LD HL,STRBUF
+                PUSH HL
+                LD (HL),B               ;Save new line length
+                INC HL
+                EX DE,HL
+                LD C,B
+                LD B,0
+                LDIR                    ;Strip all spaces
+                POP HL                  ;Restore HL (string pointer)
+                LD A,(IY+KLRECHTS)      ;Fetch position of right margin
+                SUB (IY+KLLINKS)        ;Compute line length
+                SUB (HL)                ;Compute number of spaces to insert
+                RET C                   ; <= 0, then quick exit (No Carry)
+                RRA                     ;Spaces / 2 = number to insert
+                ADD A,(IY+KLLINKS)      ;Shift line right up to left margin
+                DEC A                   ;Margin was 1-based, adjust
+                RET Z                   ;Insert zero spaces => Done
+                LD D,0
+                LD E,A                  ;DE = Number of spaces to insert at left
+                LD B,D
+                LD C,(HL)               ;BC=Length of line
+                ADD A,C                 ;Would line become longer than 254 chars?
+                RET C
+                CP 254
+                RET NC                  ; Yes, => Abort
+                LD (HL),A               ; No, save new line length
+                ADD HL,BC
+                PUSH HL                 ;HL=Address of last char in line
+                LD A,E                  ; A=Number of spaces to insert
+                ADD HL,DE
+                EX DE,HL                ;DE=Destination address
+                POP HL
+                LDDR                    ;Shift the line right
+                LD B,A                  ;B=Number of inserted spaces
+                PUSH BC
+                XOR A
+                SCF
+                CALL BLKPS3             ;Adjust block position if needed
+                POP BC
+                LD HL,STRBUF+1
+CT3:            LD (HL),' '             ;Clear area in front of margin
+                INC HL                  ; with spaces
+                DJNZ CT3
+                RET
+
+                ;Various error messages
+
+NOTFOUND:       LD HL,TNOTFND
+                CALL MESKEY             ;Not found
+                LD HL,(CSRNUM)
+                JP GOTOLINE
+
+                ;Memory full
+
+MEMVOL:         LD HL,TMEMVOL
+                CALL MESKEY
+                LD HL,(CSRNUM)
+                PUSH HL
+                CALL GOTOLINE           ;Erase this line
+                POP HL
+                LD DE,(LASTLINE)
+                OR A
+                SBC HL,DE               ;Cursor on/past last line?
+                DEC DE                  ; i.e. is the pointer pane exhausted?
+                EX DE,HL
+                CALL NC,GOTOLINE        ;  Yes, move one line up
+                JR ERROR
+
+; fullPageTab
+;
+; Show error message and return to the main loop
+;
+fullPageTab:    ld hl,tPageTabFull      ;Page table full
+                jr errToCurLine         ;Show error + Return to current line
+
+
+                ;Line too long
+
+REGLANG:        CALL EVTOPSLAAN
+                LD HL,TREGLEN
+errToCurLine:   CALL MESKEY
+REGL2:          LD HL,(CSRNUM)
+                CALL GOTOLINE
+                JR ERROR
+
+                ;Record end not found
+
+RECERR:         LD HL,TRECERR
+                JR ErrToCurLine
+
+                ;Interrupted
+
+ONDERBR:        LD HL,TONDERB
+                JR ErrToCurLine
+
+                ;Wrong TED version
+
+VERSERR:        CALL CLOSEBF
+                LD HL,TVERERR
+                JP MESKEY
+
+                ;Character set not found
+
+KARERR:         CALL CLOSEBF
+                LD HL,TKARERR
+                JP MESKEY
+
+                ;Disk full
+
+diskVol:        ld hl,tDiskvol
+                call mesKey
+
+                ;Continue after a system error
+
+error:          bit ldFl,(iy+flags1)    ;Load error?
+                call nz,lo15            ; Yes, => Close files + memory
+                call closeBf            ;Close files
+                call chkPageTab         ;Check for illegal page breaks
+                res dispOff,(iy-flags5) ;Re-enable screen updates
+                xor a
+                ld (fKeyNum),a          ;No function key
+                call comLn              ;Show standard command bar
+                res insFl,(iy+flags1)
+                call insert             ;Insert mode on
+                res blokFl,(iy+flags1)  ;Clear block-load flag
+                res vir,(iy-flags6)     ;No more virtual cursor
+                jp main                 ;Back to main loop
+
+                ;Report fatal disk error
+
+DSKERR:         PUSH IY
+                PUSH IX
+                LD HL,(CSRY)
+                PUSH HL                 ;Save cursor pos
+                LD IY,TABEL             ;IY was cleared by DOS
+                LD A,C                  ;Fetch error number
+                AND 11111110B           ; Clear read/write flag
+                LD HL,TPROT
+                JR Z,DSE1               ;=> Write protected
+                CP 010B
+                LD HL,TNODISK
+                JR Z,DSE1               ;=> No disk
+                LD HL,TDSKERR           ;=> Disk error
+DSE1:           SET ERR,(IY-FLAGS5)     ;Set error flag (no DOS calls)
+                CALL MESSAGE            ;*** Error message ***
+                LD DE,TPROB
+                CALL STROUT             ;Try again? (y/n)
+DSE2:           CALL INKCRL             ;Wait for (ctrl) key
+                CP 'J'
+                JR NZ,DSE3
+                LD HL,TMOMENT
+                CALL MESSAGE            ;One moment please...
+                RES ERR,(IY-FLAGS5)
+                LD C,1
+                POP HL
+                LD (CSRY),HL
+                POP IX
+                POP IY
+                RET                     ;Retry
+DSE3:           CP 'N'
+                JR NZ,DSE2
+DSE4:           LD SP,STACK             ;Restore stack pointer
+                RES ERR,(IY-FLAGS5)
+                LD HL,(CSRNUM)
+                CALL GOTOLINE
+                JP ERROR                ;Abort => Back
+
+                ;Jump to Check again
+
+CHECKAG:        LD DE,CHECK2-987H
+                JP CDE1
+
+                ;Interrupt handler for the clock and the news ticker
+
+INT:            BIT ERR,(IY-FLAGS5)     ;Called from the error routine?
+                RET NZ                  ; Yes, => Return; DOS 1 would give a stack problem
+                LD HL,(INTCNT)          ;Fetch counter
+                LD DE,-15
+                OR A
+                SBC HL,DE               ;More than 15 * 0.02 sec elapsed?
+                RET NC                  ; No, => Done
+                LD HL,-1
+                LD (INTCNT),HL          ;Reset interrupt counter to 1 tick
+                LD C,GETTIME
+                CALL DOS                ;Fetch time
+                PUSH DE                 ;Save seconds
+                PUSH HL                 ;Save hours/minutes
+                LD HL,55                ;Locate 0,55
+                CALL NSTWRT
+                BIT KRT,(IY-FLAGS3)     ;News ticker on?
+                JR NZ,INT0              ; Yes, scroll forward
+                LD HL,TNOKRT
+                JR INT2                 ;No news ticker
+INT0:           LD HL,(KRTPOS)          ;Fetch news-ticker start
+                INC HL                  ; one character further
+                LD (KRTPOS),HL
+                LD DE,KRTEND
+                OR A
+                SBC HL,DE               ;At end of ticker text?
+                JR C,INT1               ; No, OK
+                LD HL,KRTSTART          ; Yes, wrap to start
+                LD (KRTPOS),HL
+INT1:           LD HL,(KRTPOS)          ;Fetch source
+INT2:           LD B,15                 ;Print 15 characters
+                LD C,(IY+VDPWRITE)      ;C=VDP port, 98H
+                OTIR                    ;Print the news ticker
+                EX (SP),HL              ;Pause
+                EX (SP),HL
+                LD A,']'                ;'] '
+                OUT (C),A
+                EX (SP),HL
+                EX (SP),HL
+                LD A,' '
+                OUT (C),A
+                POP HL
+                PUSH HL
+                RES VRLOOP,(IY-FLAGS3)  ;No leading zeros
+                LD A,H
+                CALL PRTKLK             ;Print hours
+                LD A,'.'
+                OUT (C),A
+                POP HL
+                BIT VOORNUL,(IY+SAVFL)  ;Leading zeros selected?
+                JR Z,INT3
+                SET VRLOOP,(IY-FLAGS3)  ; Yes, set temporary flag
+INT3:           LD A,L
+                CALL PRTKLK             ;Print minutes
+                LD A,':'
+                OUT (C),A
+                POP DE
+                LD A,D
+                JP PRTKLK               ;Print seconds
+
+                ;Print binary number as BCD
+
+BCDSET:         CALL SETVDP             ;Make VDP ready
+PRTBCD:         SCF                     ;C => Trailing space
+                RES VRLOOP,(IY-FLAGS3)  ;No leading zeros
+                JR PRB0
+PRTKLK:         OR A                    ;No trailing space
+PRB0:           PUSH AF
+                LD A,(IY+VDPWRITE)
+                LD C,A
+                POP AF
+                PUSH AF
+                LD B,255                ;B=Hundreds
+PRB1:           INC B
+                SUB 100
+                JR NC,PRB1
+                ADD A,100
+                LD L,255
+PRB2:           INC L                   ;Print tens
+                SUB 10
+                JR NC,PRB2
+                ADD A,10
+                LD H,A
+                LD A,B
+                OR A
+                JR Z,PRB3
+                ADD A,'0'
+                OUT (C),A
+                LD A,L
+                JR PRB4
+PRB3:           LD A,L
+                OR A                    ;>10?
+                JR NZ,PRB4              ; Yes, => Print tens
+                LD A,' '
+                BIT VRLOOP,(IY-FLAGS3)  ;Print leading zero?
+                JR Z,PRB5               ; No, => space
+                XOR A
+PRB4:           ADD A,'0'
+PRB5:           OUT (C),A
+                LD A,H                  ;Print units
+                ADD A,'0'
+                OUT (C),A
+                POP AF                  ;Get trailing-space flag
+                RET NC                  ;NC => No space
+                LD A,' '
+                OUT (C),A
+                RET
+
+                ;Place character pattern into video RAM
+
+MAKEKAR:        LD B,8
+MK1:            LD A,(DE)
+                CALL NWRVRM
+                INC DE
+                INC HL
+                DJNZ MK1
+                RET
+
+                ;Jump to GETCODE
+
+TOCODE:         LD DE,GETCODE-987H
+                JR CDE1
+
+TOACCESS:
+if              not (DEMO or AUTODEMO)  ;Avoid undefined global
+                LD DE,ACCESS-987H       ;  in the DEMO build
+                JR CDE1
+endif
+
+TOCHECK:
+if              not (DEMO or AUTODEMO)
+                LD DE,CHECK-987H
+                JR CDE1
+endif
+
+                ;Encode routine
+
+CODE:           LD DE,DECODE-987H
+CDE1:           LD HL,(ADDCODE)
+                EX (SP),HL              ;=JP decode
+                EX (SP),HL
+                ADD HL,DE
+                PUSH HL
+                RET
+
+
+                ;Locate memory mapper
+
+zoekMap:        bit  mMan,(iy-flags5)
+                ret  nz                 ;Only under DOS1 may RAM-scan multiple times
+                bit  d2mm,(iy-flags4)   ; be allowed, so the MM use for the
+                ret  nz                 ; ramdisk can be turned OFF
+
+                ld   (iy-pg1Seg),-1     ;Do not use page 1 if pseg
+
+                ld   de,memMan+iniChk   ;Device 4D (MemMan) Func. 30 (IniChk)
+                ld   a,1-'M'
+                call extBios            ;Call MemMan
+                dec  a                  ;Was A incremented by 'M'?
+                jr   nz,zmDos2          ; No, => No MemMan found
+                cp   d                  ;Is the version number at least 1.1?
+                jp   z,mManErr          ; No, => Wrong MemMan version
+                dec  d                  ;Version higher than 1.xx?
+                jr   nz,mManOk          ; Yes, => Fine
+                cp   e                  ;Version 1.0?
+                jp   z,mManErr          ; Yes, => Error
+
+mmanOk:         set  mman,(iy-flags5)   ; Yes, set flag: MemMan present
+                ld   de,memMan+Info
+                ld   b,2
+                call extBios            ;Fetch FastUse jump address
+                ld   (mmUse2+1),hl      ;Set JP target to the MemMan.Use address
+
+                ld   b,1                ;Fetch current Page1 segment
+                ld   de,memMan+GetCur
+                call extBios            ;Fetch current segment in page 1
+                ld   de,mmTabel
+                ld   b,7                ;Only 8 VRAM pages found (0..7)
+                inc  a                  ;Is it an FSEG?
+                jr   nz,noFseg          ; No, => Unusable for page 2
+                ld   (mmTabel),hl       ; Yes, store as first entry in
+                inc  de                 ;  the table
+                inc  de
+                inc  b                  ;Segment count is now 8
+                ld   (iy-pg1seg),b      ;Page-1 segment is now also included, nr. 8
+noFseg:         push de
+                push bc
+                ld   b,2
+                ld   de,memMan+GetCur
+                call extBios            ;Fetch current segment in page 2
+                pop  bc
+                pop  de
+                inc  b                  ;Another segment added
+                ex   de,hl
+                ld   (hl),e             ;Place ID pointer into the table
+                inc  hl
+                ld   (hl),d
+                inc  hl
+                ex   de,hl              ;[DE] = first free entry in mmTabel
+
+                LD   C,maxMapSeg+8-1    ;C=Max segment count + VRAM; 0-based
+MEMALOC:        PUSH DE                 ;Save position in segment table
+                PUSH BC                 ;Save current segment counter
+                LD   B,2                ;Allocate segment exclusively in page 2
+                LD   DE,memMan+Alloc
+                CALL EXTBIOS
+                POP  BC
+                POP  DE
+                LD   A,H
+                OR   L                  ;Segment number = 0?
+                JR   Z,MEMDONE          ; Yes, => no (more) free segments
+                EX   DE,HL
+                LD   (HL),E             ;Save segment code
+                INC  HL
+                LD   (HL),D
+                INC  HL
+                EX   DE,HL
+                INC  B                  ;Increment segment counter
+                LD   A,B
+                CP   C                  ;Maximum reached?
+                JR   NZ,MEMALOC         ; No, => Next segment
+MEMDONE:        LD   (IY+MAXMAP),B      ; Yes, fill in segment count
+                RET
+
+ZMDOS2:         XOR A
+                LD DE,0402H             ;Device 4 (Mapper control) Func. 2
+                CALL EXTBIOS            ;Call DOS2
+                OR A                    ;Mapper routines available?
+                JR Z,ZMDOS1             ; No, => DOS1
+                LD (ALLSEG+1),HL        ; Yes, fill in jump table
+                INC HL
+                INC HL
+                INC HL
+                LD (FRESEG+1),HL        ;Free-segment routine
+                LD DE,21H-3
+                ADD HL,DE
+                LD (GETP1+1),HL         ;Get page 1 segment
+                LD DE,3
+                ADD HL,DE
+                LD (PUTP2+1),HL         ;Put page 2 segment
+                ADD HL,DE
+                LD (GETP2+1),HL         ;Get page 2 segment
+
+                SET D2MM,(IY-FLAGS4)    ;Flag: DOS2 mapper device present
+                LD (IY-PG1SEG),8        ;Page 1 segment = nr. 8
+
+                LD HL,MMTABEL           ;[HL] numbers of available segments
+                CALL GETP1
+                LD (HL),B               ;Primary Mapper slot address
+                INC HL
+                LD (HL),A               ;Current page-1 segment
+                INC HL
+                CALL GETP2
+                LD (HL),B               ;Primary Mapper slot address
+                INC HL
+                LD (HL),A               ;Current page-2 segment
+                INC HL
+                LD E,9                  ;E=Current seg (0-7=Vram, 8-9=Mapper),
+ZM1:            LD A,B                  ; Max 127 segments
+                AND 10001111B
+                SET 5,A                 ;Select segment in any slot
+                LD B,A
+                XOR A                   ;Allocate user segment
+                CALL ALLSEG
+                JR C,ZM2                ;No more free segments
+                LD (HL),B               ;Save slot address
+                INC HL
+                LD (HL),A               ;Save segment number
+                INC HL
+                INC E
+                LD A,maxMapSeg+8-1      ;128 mapper + VRAM segments?
+                CP E
+                JR NZ,ZM1               ; No, => Next segment
+ZM2:            LD (IY+MAXMAP),E        ; Yes, done; fill in segment count
+                RET
+
+zmDos1:         ld hl,08000h            ;Locate mapper under DOS1
+                ld a,(savFD)
+                out (0feh),a            ;Check whether a MM is present
+                ld e,(hl)               ;Save byte (it lives in TED's page!)
+                ld (hl),0
+                ld a,(savFE)
+                out (0feh),a
+                ld (hl),0ffh
+                ld a,(savFD)
+                out (0feh),a
+                ld a,0ffh
+                cp (hl)
+                ld (hl),e               ;Restore byte
+                ld a,8                  ;0-7 is VRAM, 8 is 1 page RAM
+                jr z,mm4                ;No memory mapper => MM4
+                inc a                   ;Mapper present, 7 pages VRAM and 2 pages MM
+                bit 0,(iy+mapFlag)      ; Keep MM free for ramdisk?
+                jr nz,mm3               ;  Yes, => use only map 1 and 2
+                call findPbTed          ;PB.COM installed?
+                bit pbTed,(iy-flags6)   ;Test result
+                ld a,9
+                jr nz,mm3               ; Yes, => Do not use MM
+
+                ld hl,seg0identifier    ;Place marker in page 3
+                ld de,0c000h            ;Start of mapper segment 0
+                ld bc,identLen          ;That many bytes
+                ldir                    ;Move into page 3
+
+                ld c,4                  ;Begin at mapper block 4; min mapper=64k
+mmGetMapSizeLp: ld a,c                  ;Fetch current block
+                out (0feh),a            ;Switch block in at 8000h
+                ld hl,seg0identifier    ;Check whether mapper segment 0
+                ld de,08000h            ; is currently switched in
+                ld b,identLen           ;Compare that many bytes
+mmCmpIdentLp:   ld a,(de)
+                cp (hl)                 ;Identifier in this block?
+                jr nz,mmNoSeg0          ; No, => Not mapper block 0
+                inc hl
+                inc de
+                djnz mmCmpIdentLp
+                jr mmLastSegFound       ; Yes, => Reached segment 0 again
+mmNoSeg0:       ld hl,8000h             ;Test whether RAM exists in this segment
+                ld (hl),l               ;Place 0 at 8000h
+                ld a,(hl)
+                cp l                    ;0 retained?
+                jr nz,mmLastSegFound    ; No, => End of mapper reached
+                ld (hl),h               ;Place 80h at 8000h
+                ld a,(hl)
+                cp h                    ;80h retained?
+                jr nz,mmLastSegFound    ; No, => End of mapper reached
+                inc c                   ;Move to next segment
+                ld a,c                  ;Fetch that segment, check whether it still fits
+                cp maxMapSeg+2+1        ;Pages 0 and 3 do not count; past end?
+                jr nz,mmGetMapSizeLp    ; Yes, => Investigate the segment
+mmLastSegFound: ld a,c                  ;Fetch current segment nr.
+                add a,5                 ;-1=0 based; -2=pag 0&3; +8=VRAM
+mm3:            ld (iy-pg1Seg),9        ;Mapper segment of page 1 = block 2
+mm4:            ld (iy+maxMap),a        ;Save highest segment number
+                ret
+
+seg0identifier: db 'MJV DOS1 Mapper Search';Segment 0 identifier
+identLen        equ $-seg0identifier    ;Identifier length
+
+
+; findPB
+;
+; Check whether the printer buffer is present
+;
+findPb:         bit mMan,(iy-flags5)    ;MemMan present?
+                jr z,findPbTed          ; No, => Then no TSRs either
+
+                ld hl,tPbID             ;TSR ID-Name in HL
+                ld de,memMan+getTsrID   ;MemMan function: Ask for TSR ID
+                call extBios            ;Call MemMan
+                jr c,findPbTed          ; => PB.TSR not found
+                ld (pbTsrID),bc         ;Save TSR ID code
+                set pbTsr,(iy-flags6)   ;PB.TSR found
+
+findPbTed:      ld a,(h.lptO)           ;Look for PB.COM
+                cp 0c9h                 ;Is the TED printer buffer present?
+                ret z                   ; No, => No PB
+                ld hl,(pbID)            ;Fetch ID bytes
+                ld bc,'BP'
+                or a
+                sbc hl,bc
+                ret nz
+                set pbTed,(iy-flags6)   ;PB.COM found
+                ret
+
+tPbID:          db 'MJV Printbuf'       ;ID name of the printer-buffer TSR
+
+
+                ;Get filename and place it into FCB1 (DOS 005CH)
+
+NAAM:           CALL GETFLEN            ;Fetch max name length into B
+                LD E,1                  ;Uppercase only
+                CALL GETTXT             ;Enter the name
+NAAM2:          BIT DOS2,(IY-FLAGS5)
+                JR Z,NAAM3              ;DOS1 => Build FCB
+                LD C,(HL)               ;Fetch length byte
+                LD A,C                  ;DOS2, copy path/filename to BUF
+                OR A
+                SCF
+                RET Z                   ;Return if length=0
+                LD (BUF),A              ;Place string length into BUF
+                INC HL
+                LD B,0
+                LD DE,BUF+1             ;String to BUF+1 (if it was not
+                LDIR                    ; already there)
+                XOR A
+                LD (DE),A               ;Null terminator
+                LD DE,BUF+1             ;Pathname in DE
+                LD BC,PARSE             ;Parse pathname
+                CALL DOS
+                XOR A
+                LD (DE),A               ;Null terminator
+                EX DE,HL
+                LD DE,BUF+1
+                PUSH HL                 ;Save end address of name
+                OR A
+                SBC HL,DE               ;Compute new length
+                EX DE,HL
+                DEC HL
+                LD (HL),E               ;Place new length into BUF
+                POP DE                  ;Restore end address into DE
+                SCF
+                RET Z                   ;Return if length=0
+                BIT 0,B                 ;Only drive name supplied?
+                RET Z                   ; Yes, => Error
+                BIT 3,B                 ;Filename?
+                JR NZ,NM1               ; Yes, => OK
+                BIT 1,B                 ;Pathname?
+                RET Z                   ; No, => Error
+                OR A                    ; Yes, done
+                RET
+NM1:            OR A
+                BIT 4,B                 ;Extension?
+                RET NZ                  ; Yes, => OK
+                LD A,(BUF)              ; No, fill in default extension
+                CP 63-4
+                RET NC                  ;Return if string > 63 chars
+                ADD A,4
+                LD (BUF),A              ;4 characters added
+                LD A,'.'
+                LD (DE),A
+                INC DE
+                LD HL,TEXTENS           ;Fill in default extension
+                LD BC,3
+                LDIR
+                XOR A
+                LD (DE),A               ;Add null terminator
+                LD HL,BUF
+                JR NAAM2                ;And recheck the extension
+
+NAAM3:          LD HL,FCB1
+                LD (HL),0               ;Default drive
+                LD DE,FCB1+1
+                LD BC,31
+                LDIR
+                LD HL,FCB1+1
+                LD (HL),' '
+                LD DE,FCB1+2
+                LD BC,10
+                LDIR
+                LD A,(BUF)
+                LD C,A                  ;C=BUF length
+                OR A
+                SCF
+                RET Z
+                LD HL,BUF+1
+                CP 1                    ;Name length=1?
+                JR Z,NAM1               ; => No drive specified
+                INC HL                  ;Examine drive number
+                LD A,(HL)
+                DEC HL
+                CP ':'
+                JR NZ,NAM1
+                LD A,(HL)
+                INC HL
+                INC HL
+                SUB 'A'-1
+                CP 9
+                CCF
+                RET C                   ;Bad drive name
+                LD (FCB1),A             ;Fill in drive number
+                DEC C
+                DEC C                   ;Only drive specified?
+                JR NZ,NAM1
+                INC C
+                LD (HL),'*'             ; Yes, => A:*.txt
+NAM1:           LD DE,FCB1+1
+                LD B,8
+NAM2:           LD A,(HL)               ;Read in name
+                CP '.'
+                JR Z,NAM4
+                CP '*'
+                CALL Z,STER             ;Replace '*' with '?'
+                LD A,B                  ;Already eight characters?
+                OR A
+                JR Z,NAM3               ; Yes, => Look for '.'
+                LD A,(HL)
+                LD (DE),A
+                INC DE
+                DEC B
+NAM3:           DEC C
+                JR Z,MAKETXT            ;No '.' => Default .TXT
+                INC HL
+                JR NAM2
+NAM4:           LD DE,FCB1+9            ;Read in extension
+                LD B,3
+                JR NAM6
+NAM5:           LD A,(HL)
+                CP '*'
+                CALL Z,STER
+                LD A,B
+                OR A
+                JR Z,NAM6
+                LD A,(HL)
+                LD (DE),A
+                INC DE
+                DEC B
+NAM6:           OR A                    ;Clear carry
+                DEC C
+                RET Z
+                INC HL
+                JR NAM5
+MAKETXT:        LD DE,FCB1+9            ;Force extension to .TXT (preferred ext.)
+                LD HL,TEXTENS
+                LD BC,3
+                LDIR
+                OR A
+                RET
+STER:           LD A,B
+                OR A
+                RET Z
+                LD A,'?'                ;Pad name with '?' chars
+                LD (DE),A
+                DEC B
+                INC DE
+                JR STER
+
+                ;Save FCB into SAVNAM
+
+SAVFCB:         LD DE,SAVNAM            ;Save name for the save operation
+SFCB2:          BIT DOS2,(IY-FLAGS5)
+                JR Z,SVN0               ;=> Fetch DOS1 FCB
+                LD HL,BUF
+                LD B,0
+                LD C,(HL)
+                INC C                   ;Include length byte and trailing null
+                INC C
+                LDIR                    ;Copy DOS2 path/filename
+                JP PRTSAV
+SVN0:           PUSH DE
+                INC DE                  ;Skip length byte
+                LD HL,FCB1
+                LD BC,0
+                LD A,(HL)               ;Fetch drive letter
+                INC HL
+                OR A
+                JR Z,SVN1               ;Default drive = nothing
+                ADD A,'A'-1
+                LD (DE),A
+                INC DE
+                INC C
+                LD A,':'                ;Fill in drive
+                LD (DE),A
+                INC DE
+                INC C
+SVN1:           LD A,(HL)
+                CP ' '                  ;Name done?
+                JR Z,SVN2               ; Yes, => Extension
+                LD (DE),A
+                INC B
+                INC HL
+                INC DE
+                LD A,B
+                CP 8
+                JR C,SVN1
+SVN2:           LD A,'.'                ;Fill in extension
+                LD (DE),A
+                INC DE
+                INC B
+                LD HL,FCB1+9
+                LD A,B
+                ADD A,C
+                LD C,A                  ;Save length
+                LD B,0
+SVN3:           LD A,(HL)
+                CP ' '                  ;Extension done?
+                JR Z,SVN4               ; Yes, => OK
+                LD (DE),A
+                INC B
+                INC HL
+                INC DE
+                LD A,B
+                CP 3
+                JR C,SVN3
+SVN4:           LD A,B
+                ADD A,C
+                POP HL
+                LD (HL),A               ;Fill in length byte
+                JP PRTSAV
+
+                ;Determine maximum file/path length
+
+GETFLEN:        LD B,14
+                BIT DOS2,(IY-FLAGS5)
+                RET Z                   ;DOS1 max 14 chars
+                LD B,63                 ;DOS2 max 63 chars
+                RET
+
+if              DEMO or AUTODEMO        ;Demo build of TED?
+
+SAVEBLOK:
+SAVE:
+SAVE1:
+SV0B:           LD HL,TDEMO             ; Yes, Text: Demo build - Save
+                JP MESKEY
+
+TDEMO:          db TAB,'*** Demoversie - Bewaren niet mogelijk',NUL
+
+else                                    ; No, assemble the save function as normal
+
+                ;Save current block
+
+SAVEBLOK:       CALL EVTOPSLAAN
+                LD HL,(BSTARTLN)
+                LD DE,(BENDLN)
+                CALL DCOMPR             ;Block defined?
+                JR C,SB1
+                RET NZ                  ; No, => Return
+                LD A,(IY-BSRTPOS)
+                SUB (IY-BENDPOS)
+                RET NC
+SB1:            LD (SAVESTART),HL       ;Start line
+                LD (SAVEEND),DE         ;Last line
+                SET BLOKFL,(IY+FLAGS1)  ;Mark as block save
+                CALL SAVE1              ;Save block
+                RES BLOKFL,(IY+FLAGS1)
+                RET
+
+                ;Save current text
+
+SAVE:           CALL EVTOPSLAAN         ;Save current line
+                LD HL,0
+                LD (SAVESTART),HL       ;Start at line 0
+                LD HL,(LASTLINE)        ;Fetch last line number into HL
+                LD A,H
+                OR L                    ;Zero lines in memory?
+                JR Z,SV0
+                DEC HL                  ; No, last line is not needed (always empty)
+SV0:            LD (SAVEEND),HL
+
+SAVE1:          LD HL,TSAVNAM           ;Entry for save block
+                BIT DOS2,(IY-FLAGS5)    ;DOS2 pathname?
+                JR Z,SV0A
+                INC HL                  ; Yes, skip the 3 tabs
+                INC HL
+                INC HL
+SV0A:           LD C,1
+                CALL INVOER             ;Fetch save name
+                BIT BLOKFL,(IY+FLAGS1)  ;Saving a block?
+                JR NZ,SV0C              ; Yes, => No old name
+                LD HL,SAVNAM            ; No, show load name
+                LD E,1
+                CALL GETFLEN            ;Fetch max file/path length into B
+                CALL GETOLD             ;Enter the name
+SV0B:           CALL NAAM2              ;Fetch the name
+                RET C
+                BIT SVINS,(IY+SAVFL2)   ;Save settings too?
+                CALL NZ,SAVINSE         ; Yes, save settings
+                JR SAVE2                ;Save the text
+SV0C:           CALL NAAM
+SV0D:           RET C
+save2:          ld hl,tMoment
+                call message            ;One moment please...
+                ld a,create
+                call maakFCB
+                ret c
+                call disVdpInt          ;Disable VDP interrupts (faster)
+                bit blokFl,(iy+flags1)  ;Saving a block?
+                call z,savFCB           ; No, => Save new name
+                xor a
+                ld (iy+endSav),a
+                ld (iy+bufLen),a
+                ld hl,diskBuf
+                ld (bufPoint),hl        ;Empty buffer
+                ld de,diskBuf
+                ld c,setDMA             ;Set DMA address
+                call dos
+                ld de,(saveStart)       ;DE=Start line
+                ld hl,(saveEnd)         ;HL=Last line
+
+sv1:            push hl
+                push de
+                res tabFl,(iy+flags1)   ;No ' or " seen yet
+                ld hl,strBf2            ;Fetch line into STRBF2
+                bit stoTab,(iy+tabSav)  ;TABs to disk?
+                jr z,sv2                ; No, => fetch string without tabs
+                call get2               ; Yes, leave tabs (chr 255) in place
+                jr sv2b
+sv2:            call get                ;Fetch string without TAB characters
+sv2b:           or a
+                jp z,sv9                ;Length=0 => Emit return
+                bit blokFl,(iy+flags1)  ;Saving a block?
+                jp z,sv2e               ; No, => jump quickly forward
+                pop de                  ; Yes, fetch current and last line
+                pop hl
+                push hl
+                push de
+                sbc hl,de               ;Is this the last line?
+                jr nz,sv2c              ; No, => Check whether it is the 1st
+                ld hl,strBf2            ; Yes, fetch line into STRBF2
+                call get                ;  without spaces
+                ld a,(iy-bEndPos)
+                ld (hl),a               ;Truncate line at end of block
+                or a                    ;Block end at pos. 0?
+                jp z,sv9                ; Yes, => Line is done
+                pop de
+                push de                 ;Restore line number
+                ld hl,(saveStart)
+                or a
+                sbc hl,de               ;Is this the 1st line?
+                jr nz,sv2e              ; No, => Done
+                jr sv2d                 ; Yes, => Block end and start in same line
+sv2c:           ld hl,(saveStart)
+                or a
+                sbc hl,de               ;Is this the 1st line?
+                jr nz,sv2e              ; No, => Done
+                ld hl,strBf2            ; Yes, fetch line into STRBF2
+                call get                ;  without spaces
+sv2d:           ld hl,strBf2            ;HL=String buffer
+                ld a,(hl)
+                ld b,0
+                ld c,(iy-bSrtPos)
+                add hl,bc               ;Move to start of block
+                sub c
+                jp z,sv9                ;Empty line => Done
+                jp c,sv9                ; Should not be possible
+                ld (strBf2),a           ;Set new length
+                inc hl                  ;No length byte
+                jr sv2f
+
+sv2e:           ld hl,strBf2+1          ;String lives in string buffer 2
+sv2f:           xor a
+                ld (iy-spaties),a       ;Space counter=0
+                ld c,a                  ;C=position in source line
+
+sv3:            ld a,(hl)
+                cp ' '                  ;Space?
+                jp nz,sv4               ; No, => Just copy it
+                bit stoTab,(iy+tabSav)  ;Convert to TABs?
+                jr z,sv3b               ; No, => Plain spaces
+                BIT TABFL,(IY+FLAGS1)   ;Inside a string between "?
+                JR NZ,SV3B              ; Yes, => Insert spaces
+                BIT STTAB,(IY+TABSAV)   ;Are TABs already in the string?
+                JR NZ,SV3B              ; Yes, => That speeds things up
+                INC (IY-SPATIES)        ;One more space
+                PUSH HL
+                LD E,A                  ;Save character
+                LD B,0
+                LD HL,TTAB+1
+                ADD HL,BC               ;Compute pos in TAB row
+                LD A,(HL)
+                OR A                    ;Is there a TAB stop?
+                LD A,E
+                POP HL
+                JR Z,SV8                ; No, => Next character
+                LD A,(IY-SPATIES)
+                LD (IY-SPATIES),0
+                DEC A                   ; Only one space?
+                LD A,' '
+                JR Z,SV4                ; Yes, => Insert space
+                LD A,TAB                ; No, => Insert Tab
+SV3B:           EX DE,HL
+                LD HL,(BUFPOINT)
+                JR SV7B                 ;Insert character directly
+SV4:            EX DE,HL                ;Save source in DE
+                LD B,A                  ;Save character
+                LD A,(IY-SPATIES)       ;Were there spaces?
+                OR A
+                JR Z,SV6                ; No, => Insert character
+                LD HL,(BUFPOINT)
+SV5:            LD (HL),' '             ; Yes, first insert spaces
+                INC HL
+                DEC A
+                JR NZ,SV5
+                LD (IY-SPATIES),0
+                JR SV7                  ;Then insert character
+SV6:            LD HL,(BUFPOINT)
+SV7:            LD A,B
+                CP 127                  ;Control character?
+                JP NZ,SV7A              ; No, => Plain graphic
+                INC DE                  ; Yes, fetch next character
+                INC C
+                LD A,(STRBF2)
+                CP C                    ;All chars consumed?
+                JR Z,SV9                ; Yes, => Line done
+                LD A,(DE)               ;Fetch character
+                SUB 'A'-1               ;^A becomes ascii 1
+                JR SV7B                 ;Insert into disk buffer
+SV7A:           CP ' '                  ;Graphic character?
+                JP NC,SV7AB             ; No, => OK
+                OR A                    ;       ESCape character? (Ascii 0)
+                LD A,ESC
+                JR Z,SV7B               ;        Yes, => Insert ESC
+                LD A,1                  ; Yes, write CHR$(1)+character
+                LD (HL),A
+                INC HL
+                LD A,B                  ;Fill in graphic character
+                ADD A,'A'-1
+                JR SV7B
+SV7AB:          CP 255                  ;Internal TAB character?
+                JP NZ,SV7B              ; No, => SV7B
+                LD A,TAB                ; Yes, fill in TAB (Ascii 9)
+SV7B:           LD (HL),A               ;Save character into buffer
+                INC HL
+                LD (BUFPOINT),HL
+                EX DE,HL
+                CP "'"                  ;Was the character a ' ?
+                JR Z,SV7C               ; Yes, => Do not use TABs
+                CP '"'
+                JP NZ,SV8
+SV7C:           SET TABFL,(IY+FLAGS1)   ;No TABs inside a string
+SV8:            INC C                   ;Advance source counter
+                INC HL
+                LD A,(STRBF2)
+                CP C                    ;All chars consumed?
+                JP NZ,SV3               ; No, => Next character
+                LD A,(IY-SPATIES)       ;Trailing characters were spaces?
+                OR A
+                JR Z,SV9                ; No, => Insert return
+                LD HL,(BUFPOINT)
+                LD (HL),' '             ; Yes, insert space
+                INC HL
+                JR SV10
+
+SV9:            LD HL,(BUFPOINT)
+SV10:           LD (HL),CR              ;Insert return
+                INC HL
+                LD (HL),LF
+                INC HL
+                LD (BUFPOINT),HL
+                LD DE,(ENDTPA)
+                DEC D                   ;SUB DE,512  graphic characters take 2
+                DEC D                   ; bytes, so the buffer fills up sooner
+                OR A
+                SBC HL,DE
+                CALL NC,SAVEBUF         ;Full => flush buffer
+                POP DE
+                POP HL
+                CALL DCOMPR             ;Processed all lines?
+                INC DE
+                JP NZ,SV1               ; No, => Next line
+                LD HL,(BUFPOINT)
+                LD (HL),CTRLZ           ;Save EOF marker
+                INC HL
+                LD (BUFPOINT),HL
+                CALL SAVEBUF            ;Flush the buffer
+                CALL CLOSEBF            ;Close file
+                BIT BLOKFL,(IY+FLAGS1)  ;Block save?
+                RET NZ                  ; Yes, => Done
+                RES SAV,(IY+FLAGS1)     ;File no longer needs saving after F4/S
+                RET
+
+                ;Flush save buffer
+
+SAVEBUF:        LD DE,DISKBUF
+                LD HL,(BUFPOINT)
+                LD (BUFPOINT),DE        ;Reset pointer
+                OR A
+                SBC HL,DE               ;Compute buffer length
+                RET Z
+                BIT DOS2,(IY-FLAGS5)
+                JR Z,SVB1
+                LD DE,DISKBUF
+                LD C,WRITEFH            ;Write to DOS2 file handle
+                LD B,(IY+DSKFLG)
+                CALL DOS
+                JR SVB2                 ;Test error
+SVB1:           LD DE,FCB
+                LD C,RBWRITE
+                CALL DOS                ;Write to DOS1 FCB
+                OR A
+SVB2:           RET Z
+                JP DISKVOL
+
+endif                                   ;End of demo-build IF
+
+                ;Next position is a TAB stop?
+
+TABPOS:         PUSH HL
+                LD E,A                  ;Save character
+                LD B,0
+                LD HL,TTAB+1
+                ADD HL,BC               ;Compute pos in TAB row
+                LD A,(HL)
+                OR A                    ;Is there a TAB stop?
+                LD A,E                  ; No, signal NZ
+                POP HL
+                RET
+
+                ;Add (insert) a block
+
+LOADBLOK:       LD HL,TLOADNAM
+                BIT DOS2,(IY-FLAGS5)    ;DOS2 pathname?
+                JR Z,LB1
+                INC HL                  ; Yes, skip the 3 tabs
+                INC HL
+                INC HL
+LB1:            LD C,1
+                CALL INVOER             ;Fetch filename
+                CALL NAAM
+                RET C
+LDBLK2:         LD A,OPEN               ;Entry for blockload from F3/Contents
+                CALL MAAKFCB            ;Open the file
+                JP C,NOTFOUND           ; Carry => Not found
+                CALL RESETBLOK          ;Clear block definition
+                LD A,(IY+TABSAV)
+                PUSH AF
+                RES UITVUL,(IY+TABSAV)
+                CALL RETINS             ;Split destination in two
+                POP AF
+                LD (IY+TABSAV),A
+                CALL OPSLAAN            ; and save 2nd line
+                CALL RESTSCR            ;Restore screen layout
+                LD HL,(CSRNUM)
+                PUSH HL
+                LD (LOADREG),HL
+                LD (BENDLN),HL
+                LD (BSTARTLN),HL
+                SET BLOKFL,(IY+FLAGS1)
+                CALL LOAD3              ;Load the text
+                RES BLOKFL,(IY+FLAGS1)  ;Clear block-load flag
+                POP HL
+                DEC HL
+                LD (BSTARTLN),HL        ;Get block start
+                INC HL
+                CALL GOTOLINE
+                JP BSPACE               ;Move block start one line up
+
+                ;Load a text
+
+LOAD:           CALL EVTOPSLAAN
+                CALL VRAAGSAVE          ;Should the text be saved first?
+                LD HL,0                 ;Text begins at line 0
+                LD (LOADREG),HL
+                LD HL,TLOADNAM
+                BIT DOS2,(IY-FLAGS5)    ;DOS2 pathname?
+                JR Z,LOAD1
+                INC HL                  ; Yes, skip the 3 tabs
+                INC HL
+                INC HL
+LOAD1:          LD C,1
+                CALL INVOER             ;Fetch filename
+                LD E,1
+                CALL GETFLEN            ;Fetch name length
+                LD HL,LOADNAM           ;Fetch old (not-found) name
+                CALL GETOLD             ;Enter the name
+                CALL NAAM2              ;Check name/extension
+                LD HL,LOADNAM
+                LD (HL),0               ;Clear old name
+                RET C                   ;Bad name => return
+LOAD2:          BIT SVINS,(IY+SAVFL2)
+                CALL NZ,LOADINS         ; No, load *.TED settings file
+
+                LD A,OPEN               ;Entry when name is in FCB1
+                CALL MAAKFCB            ;Open file
+                JR NC,LO0B              ; Open succeeded => LO0B
+                CALL NOTFOUND           ; Carry => Not found
+                LD DE,LOADNAM           ; Failed, save name
+                JP SFCB2
+LO0B:           call clrNoPageTab       ;Clear string memory, keep page table
+                CALL SAVFCB             ;Save name for the save operation
+                SET LDFL,(IY+FLAGS1)    ;Set loading flag
+                LD A,(IY+TABMAP)
+                LD (IY+CURTAB),A        ;Current pointer segment = first
+                CALL RTABHL             ;Read start address of that segment
+                LD (PNTADR),HL          ;Address of next pointer slot
+                LD A,(IY+BOTMAP)
+                LD (IY+CURMAP),A        ;Current data segment = first data segment
+                CALL READHL
+                LD (DATADR),HL          ;Address for string data
+
+LOAD3:          LD HL,LO1B              ;Entry for block-loading
+                PUSH HL
+                LD HL,(TOCHK)
+                JP (HL)                 ;Verify checksum
+
+MAKCTRL:        LD A,C                  ;Fetch line length
+                CP 252
+                DEC HL
+                JP NC,LO9               ;Too long => Next line
+                INC HL
+                LD A,DEL                ;A=Control prefix char (^)
+                INC C                   ;C=Lower byte of STRBUF, addr 0C000H
+                LD (BC),A               ;Insert ^-character into the string buffer
+                LD A,'A'-1
+                ADD A,(HL)              ;Code + 64 = control letter
+                JP LO3B                 ;Insert control letter
+
+; Entry for (block) loading
+;
+LO1B:           ld hl,tMoment
+                call message            ;One moment please...
+                call disVdpInt          ;Disable VDP interrupts (faster)
+
+                ld hl,(loadReg)         ;Fetch destination line
+                push hl                 ;Save on stack
+                call update             ;Fill the buffer
+                inc hl                  ;HL=Pointer to start of disk buffer
+                ld de,(endTPA)          ;DE=End of disk buffer
+                ld c,0                  ;C=Length of current line
+
+lo2:            ld b,high strBuf        ;B=High byte of string buffer at 0C000H
+lo2b:           ld a,(hl)               ;Fetch character from disk buffer
+                cp 255                  ;Character 255?
+                jr z,makCtrl            ; Yes, => Convert to a control code
+                cp del                  ;Delete character?
+                jr z,lo8b               ; Yes, => Do BS
+                cp ' '
+                jp nc,lo3b              ;JP = faster than JR
+                cp cr
+                jr z,lo9
+                cp lf
+                jr z,lo9
+                cp ctrlZ                ;CTRL Z?
+                jr z,lo8c               ; Yes, => Done
+                cp esc
+                jr z,lo6                ;ESC is allowed (becomes ascii 0)
+                CP BS
+                JR Z,LO8B               ;BS => Erase character
+                CP TAB
+                JR Z,LO5B               ;TAB => Possibly convert to ascii 255
+                CP 1
+                JR Z,LO7                ;Graphic opcode
+                JP MAKCTRL              ;Insert ^-Code for codes < 32
+LO3:            LD B,HIGH STRBUF        ;B=High byte of string buffer at 0C000H
+LO3B:           INC C                   ;C=Lower byte, skip length byte, increase line len
+                LD (BC),A               ;Insert character into string buffer
+                LD A,C
+                CP 253
+                JR NC,LO9               ;Max 254 characters
+LO4:            LD A,L
+                CP E
+                LD A,H
+                SBC A,D                 ;Load buffer empty?
+                LD A,(HL)               ;     Pre-fetch next character
+                CALL NC,UPDATE          ; Yes, => Update
+                INC HL
+                CP TAB                  ;Was character a TAB?
+                JP NZ,LO2B              ; No, => Continue
+                PUSH HL                 ;Save source pointer
+                LD B,0
+                LD HL,TTAB              ;Compute position in line
+                ADD HL,BC
+                LD A,(HL)               ;Cursor on a tab stop?
+                OR A
+                POP HL
+                JR NZ,LO2               ; Yes, => Continue
+                DEC HL                  ; No, => Stay on TAB
+
+LO5B:           BIT LDTAB,(IY+TABSAV)   ;Load TABs directly?
+                LD A,' '
+                JR Z,LO3                ; No, => Build a row of spaces
+                LD A,255                ;TAB=Code 255
+                LD (HL),A               ;Do not turn it into spaces (see LO5)
+                JR LO3
+
+LO6:            XOR A                   ;ESC=Code 0
+                JR LO3
+
+                ;Fetch graphic code
+
+LO7:            LD A,L
+                CP E
+                LD A,H
+                SBC A,D                 ;Load buffer empty?
+                CALL NC,UPDATE
+                INC HL
+                LD A,(HL)
+                SUB 'A'-1               ;Compute code
+                JR LO3B
+
+LO8B:           LD A,C                  ;Backspace => Step back one character
+                OR A                    ;Line length=0?
+                JP Z,LO4                ; Yes, => Done
+                DEC C
+                JP LO4
+
+LO8C:           INC C                   ;Ctrl/Z, check whether the line length is 0
+                DEC C
+                JR Z,LO13               ; Yes, => Close the file
+
+LO9:            LD A,C
+                LD (STRBUF),A           ;Fill in line length
+                POP DE                  ;Fetch line nr. into DE
+                INC DE                  ;Advance by 1
+                PUSH DE
+                PUSH HL                 ;Save source pointer
+                LD HL,STRBUF            ;Pass line address
+                BIT BLOKFL,(IY+FLAGS1)  ;Loading a block?
+                JP Z,LO9B               ; No, => Append line at the end of the
+                DEC DE                  ;         string segment
+                CALL VOEGIN             ; Yes, insert string pointer
+                LD A,(HL)
+                OR A                    ;String len = 0?
+                JR Z,LO9C               ; Yes, => Done
+                LD DE,LO9C              ;Push RET address onto the stack
+                PUSH DE
+                BIT LDTAB,(IY+TABSAV)   ;Tabs loaded directly from disk?
+                JP NZ,ZR0B              ; Yes, => All TABs already in place
+                JP ZR0A                 ; No, => Convert spaces back to TABs
+LO9B:           CALL PUTLAST            ;Save line quickly
+LO9C:           LD DE,(ENDTPA)          ;DE=End of load buffer
+                POP HL                  ;Fetch source pointer
+                LD C,0                  ;New line, => length=0
+                LD A,(HL)
+                CP CTRLZ                ;EOF?
+                JR Z,LO13               ; Yes, => Close file
+                LD B,LF
+                CP CR                   ;1st char CR?
+                JR Z,LO10               ; => Skip LF as well
+                LD B,CR
+                CP LF
+                LD B,HIGH STRBUF        ;B=High byte of string buffer at 0C000H
+                JP NZ,LO4               ; No LF/CR => Next string
+                LD B,CR
+LO10:           LD A,L
+                CP E
+                LD A,H
+                SBC A,D                 ;Load buffer empty?
+                CALL NC,UPDATE
+                INC HL
+                LD A,(HL)
+                CP B                    ;Does CR follow LF or vice versa?
+                JP NZ,LO2               ; No, => Next string starts here
+                LD B,HIGH STRBUF        ;      B=High byte of string buffer
+                JP LO4                  ; Yes, => Skip the character
+
+LO13:           POP HL                  ;Fetch last line number
+                BIT BLOKFL,(IY+FLAGS1)  ;Block-load in progress?
+                JR Z,LO15
+                LD (BENDLN),HL          ; Yes, fill in block end
+                JR LO16
+lo15:           ld hl,(pntAdr)          ; No, fetch end address of pointer seg
+                call wTabHL             ;Save end of current pointer segment
+                ld hl,(datAdr)          ;End address of data segment
+                call writeHL
+                ld hl,0                 ;Move to first line
+                call gotoLine
+                res ldFl,(iy+flags1)    ;Clear loading flag
+lo16:           call closeBf            ;Close the file
+                call chkPageTab         ;Remove illegal page breaks if any
+                or a                    ;No carry => load OK
+                ret
+
+                ;Refill the loading buffer, new pointer in HL
+
+UPDATE:         PUSH DE
+                PUSH BC
+                PUSH AF                 ;Preserve AF as well
+                LD C,0                  ;Last line may be discarded
+                LD HL,DISKBUF           ;This is where the disk buffer starts
+                JR UD2B                 ;Please refill
+
+UPDAT2:         PUSH AF                 ;Preserve AF as well
+                LD HL,(ENDTPA)
+                INC HL
+                LD A,C                  ;Fetch leftover from last line?
+                OR A
+                JR Z,UD2                ; No, => UD2
+                PUSH BC                 ;BC=Remaining length
+                SBC HL,BC
+                LD DE,DISKBUF
+UD1:            LDIR                    ;Move leftover to start of buffer
+                POP BC
+UD2:            LD HL,DISKBUF
+                ADD HL,BC               ;Compute start address
+
+UD2B:           PUSH HL                 ;Save start address
+                EX DE,HL
+                LD C,SETDMA
+                BIT DOS2,(IY-FLAGS5)    ;DOS2?
+                CALL Z,DOS              ; No, => Set start address
+                LD HL,(ENDTPA)          ;Compute number of bytes to read
+                INC HL
+                POP DE                  ;Fetch start address
+                PUSH DE
+                OR A
+                SBC HL,DE
+                BIT DOS2,(IY-FLAGS5)    ;DOS2?
+                JR Z,UD3                ; No, => Read from FCB
+                LD C,READFH             ; Yes, read via file handle
+                LD B,(IY+DSKFLG)        ;Fetch file handle
+                CALL DOS                ;Read HL bytes into DE
+                JR UD4
+UD3:            LD DE,FCB               ;Read from FCB
+                LD C,RBREAD
+                CALL DOS                ;Read data from disk
+                OR A
+                JR Z,UD5                ;No end-of-text => Done
+UD4:            POP DE
+                PUSH DE
+                ADD HL,DE               ;Compute address of last byte + 1
+                LD (HL),CTRLZ           ;Insert EOF after end-of-text
+UD5:            POP HL
+                DEC HL
+                POP AF                  ;Restore registers
+                POP BC
+                POP DE
+                RET
+
+                ;Open / Create text file
+
+MAAKFCB:        BIT DOS2,(IY-FLAGS5)    ;DOS2 present?
+                JR Z,MFDOS1             ; No, => Build FCB
+                PUSH AF
+                CP CREATE               ;Create file handle?
+                JR Z,MFH2
+                LD A,1                  ; No, => Open read-only file handle
+                LD DE,BUF+1             ;DE=Pathname address
+                LD C,OPENFH             ;Open file handle
+                CALL DOS
+MFH1:           JP NZ,MKF1              ;=> Error
+                POP AF
+                LD (IY+DSKFLG),B        ;Save file handle
+                OR A
+                RET
+MFH2:           BIT BKUP,(IY+SAVFL)     ;Make backup?
+                JR Z,MFH5
+                LD HL,BUF
+                LD DE,path1Buf          ; Yes, save path/filename in BUF+125
+                LD BC,65
+                LDIR
+                LD BC,PARSE
+                LD DE,BUF+1
+                CALL DOS                ;Parse pathname
+                BIT 3,B                 ;Filename present?
+                JP Z,MKF1               ; No, => Bad filename
+                PUSH HL                 ;Save start address of filename
+                BIT 4,B                 ;Extension present?
+                JR Z,MFH4
+MFH3:           LD A,(HL)               ; Yes, look for the '.'
+                INC HL
+                CP '.'
+                JR NZ,MFH3
+                DEC HL
+                EX DE,HL
+MFH4:           EX DE,HL
+                LD (HL),'.'             ;Force extension to .BAK
+                INC HL
+                LD (HL),'B'
+                INC HL
+                LD (HL),'A'
+                INC HL
+                LD (HL),'K'
+                INC HL
+                LD (HL),0
+                LD DE,BUF+1
+                LD C,DEL2               ;Erase old '.BAK' file
+                CALL DOS
+                POP HL
+                LD DE,path1Buf+1        ;Rename original file to '.BAK'
+                LD C,REN2
+                CALL DOS
+                LD HL,path1Buf
+                LD DE,BUF
+                LD BC,65
+                LDIR                    ;Restore filename
+MFH5:           LD DE,BUF+1
+                LD BC,CREATEFH          ;Create normal file handle
+                LD A,10B                ;Write only
+                CALL DOS
+                JR MFH1                 ;Test error
+
+MFDOS1:         LD HL,FCB1              ;Fetch the name
+                LD BC,12
+MFDOS1B:        LD DE,FCB
+                PUSH DE
+                LDIR
+                PUSH AF                 ;Save DOS open/create
+                CP CREATE               ;Creating a file?
+                JR NZ,MKF0              ; No, => No checks
+                BIT BKUP,(IY+SAVFL)     ; Yes, make backup?
+                JR Z,MKF0
+                LD HL,FCB
+                LD DE,FCB+16            ; Yes, build 2nd FCB
+                PUSH HL
+                PUSH DE
+                LD BC,9
+                LDIR
+                EX DE,HL
+                LD (HL),'B'             ;Force extension to .BAK
+                INC HL
+                LD (HL),'A'
+                INC HL
+                LD (HL),'K'
+                POP DE
+                LD C,DELFILE
+                CALL DOS                ;Erase old .BAK if any
+                POP DE
+                LD C,RENAME
+                CALL DOS                ;Rename old original to .BAK
+MKF0:           XOR A
+                LD (FCB+12),A           ;Clear extent byte of FCB
+                POP AF
+                POP DE
+                LD C,A
+                PUSH AF
+                CALL DOS                ;Open/create file
+                OR A
+                JR NZ,MKF1              ;ERROR
+                POP AF
+                LD HL,1
+                LD (GROOTTE),HL
+                LD (IY+DSKFLG),L        ;1 File open
+                DEC HL
+                LD (BLOK),HL
+                LD (BLOK+2),HL
+                OR A
+                RET
+MKF1:           POP AF
+                CP CREATE               ;Saving?
+                JR Z,TOOMANY            ; Yes, too many files
+                SCF
+                RET
+
+TOOMANY:        LD HL,TTOMANY
+                CALL MESKEY
+                SCF
+                RET
+
+                ;Append string after the last line
+                ;HL=String address
+                ;DE=Line number
+                ;C=Length
+
+PUTLAST:        PUSH HL
+                BIT LDTAB,(IY+TABSAV)   ;Tabs loaded directly from disk?
+                JP NZ,PL0               ; Yes, => All TABs already in place
+                BIT STTAB,(IY+TABSAV)   ; No, do they need to be computed?
+                JR Z,PL0                ;  No, => No STore TABs
+                INC C                   ;Saving an empty string?
+                DEC C
+                JR Z,PL0                ; Yes, => No tab conversion
+                PUSH DE
+                CALL MAKETAB            ;  Yes, build string with TABs
+                POP DE                  ;Restore line number
+                EX (SP),HL              ;Save new string address, drop old
+                LD C,A                  ;Fetch (shortened) string length
+PL0:            LD A,(IY+CURTAB)        ;Fetch current pointer segment
+                CALL MMOUT              ;Switch it in
+                LD HL,(PNTADR)          ;Fetch address for next pointer
+                PUSH HL                 ;Save pointer address
+                BIT 6,H                 ;Does pointer fit in this page?
+                INC HL                  ; Pre-compute address of next pointer
+                INC HL
+                INC HL
+                INC HL
+                JR Z,PL1                ; Yes, => Look for data space
+                POP HL                  ; No, fetch pointer address from stack
+                CALL WTABHL             ;Save it in the end-address table
+                DEC A                   ;Install a new pointer segment
+                CP (IY+DATAMAP)         ;Next segment available?
+                JR Z,LOADMEMVOL         ; No, => Show error
+                CP 7
+                JR Z,LOADMEMVOL         ; No, => No VRAM available for pointer table
+                LD (IY+CURTAB),A        ; Yes, allocate a new pointer segment
+                LD (IY+TABMAP),A        ;Save number of last pointer segment
+                CALL MMOUT              ;Switch the segment in
+                EX DE,HL                ;Stash line number in HL
+                CALL GETBOT2            ;Fetch start address of segment in DE
+                EX DE,HL                ;  in HL
+                PUSH HL                 ;Start address becomes address of new pnt
+                INC HL                  ;End address of segment lies 4 bytes
+                INC HL                  ; past the pointer
+                INC HL
+                INC HL
+PL1:            LD (PNTADR),HL          ;Save new pointer-segment end address
+                LD (LASTLINE),DE        ;Save line number of last line + 1
+
+                LD HL,(DATADR)          ;Fetch next data address
+                LD D,H                  ; into DE and HL
+                LD E,L
+                LD B,0                  ;BC=String length
+                ADD HL,BC
+                BIT 6,H                 ;Does the string still fit in the segment? (H < 0C0H)
+                JR Z,PL3                ; Yes, => String to [DE]
+                LD HL,(DATADR)          ; No, save end address of this
+                CALL WRITEHL            ;  data segment
+                LD A,(IY+CURMAP)        ;Fetch number of current data segment
+                INC A                   ;We pick a new one
+                CP (IY+TABMAP)          ;Reached pointer segment?
+                JR NZ,PL2               ; No, => Segment is free
+                POP HL                  ;Fetch pointer address
+                INC HL
+                LD (HL),0               ;Set string length to 0
+                JR LOADMEMVOL           ;Show "Memory full" message
+PL2:            LD (IY+DATAMAP),A       ;Save last data segment
+                LD (IY+CURMAP),A        ;Save current data segment
+                CALL GETBOT2            ;Fetch start address of this segment in DE
+                LD H,D                  ;Copy segment start address into HL
+                LD L,E
+                ADD HL,BC               ;Compute end address of string-data seg.
+PL3:            LD (DATADR),HL          ;That becomes start address for next time
+                LD A,(IY+CURMAP)
+                POP HL                  ;Fetch pointer address from stack
+                LD (HL),A               ;Place data-segment number into pointer
+                INC HL
+                LD (HL),C               ;String length
+                INC HL
+                LD (HL),E               ;And the string address
+                INC HL
+                LD (HL),D
+                POP HL                  ;Fetch source address of string
+                INC C
+                DEC C                   ;String length 0?
+                RET Z                   ; Yes, => Done
+                INC HL                  ;Skip length byte
+                CP 8                    ;Is the data segment in VRAM?
+                JP C,LDRVM2             ; Yes, => String to VRAM
+                CALL MMOUT              ; No, switch the segment in page 2
+                LDIR                    ;String to data segment
+                RET
+LOADMEMVOL:     LD HL,TMEMVOL
+                CALL MESKEY             ;Show "Memory full" message
+                JP ERROR                ;Close file handles etc.
+
+
+; disVdpInt
+;
+; Disable VDP interrupts
+;
+; Modifies: A, C
+;
+disVdpInt:      ret
+                ld c,(iy-vdpCw)         ;C=VDP command port
+                ld a,(rg1sav)           ;Value of register 1
+                and 11011111b           ;Clear bit 5
+                ld (rg1sav),a
+                out (c),a               ;Send data byte to VDP
+                ld a,1 + 80h            ;Data must go to register 1
+                out (c),a
+                ret
+
+
+; enaVdpInt
+;
+; Enable VDP timer interrupt.
+;
+; Bug: Sometimes disturbs the screen build-up when called via CHSNS
+;
+; Modifies: A, C
+;
+enaVdpInt:      ld a,(rg1sav)           ;Value of register 1
+                bit 5,a                 ;Interrupts already enabled?
+                ret nz                  ; Yes, => Done
+                ld c,(iy-vdpCw)         ;C=VDP command port
+                or 00100000b            ;Set bit 5
+                ld (rg1sav),a
+                out (c),a               ;Send data byte to VDP
+                ld a,1 + 80h            ;Data must go to register 1
+                out (c),a
+                ret
+
+
+defFcb:         db 0
+
+if              DEMO or AUTODEMO
+tTed:           db 'TEDDEMO COM',0      ;FCB name + extent byte
+else
+tTed:           db 'TED     COM',0
+endif
+
+defEnd          equ $
+
+if1
+                .printx * Pass 1 done *
+else
+                .printx * Pass 2 done *
+endif
+
+                end                     ;SUBTED.MAC
+
