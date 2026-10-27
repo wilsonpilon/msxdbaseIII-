@@ -20,6 +20,8 @@ Downloads locais:
 - [Pacote ZIP](release/msxdbase-2.0-downloads.zip)
 
 Tag: `2.0`
+Commit enviado para `origin/main`: `f499fc1`.
+Tag `2.0` enviada para `origin`. A página GitHub Release ainda não foi criada porque o `gh` não está autenticado; após login, publicar com os três artefatos locais acima.
 
 ## 1.3 Shell: leitura inicial de DBF II MSX
 

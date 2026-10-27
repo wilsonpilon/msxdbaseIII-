@@ -38,6 +38,7 @@ data/CLIENTES.DBF. Modulos e libs registrados em project/project_config.js.
 - `APPEND BLANK` implementado para DBF II. No original, contador e data são atualizados, o marcador EOF é movido após o registro em espaços e o restante do arquivo físico recebe `0xFF`.
 - Comparação byte a byte passou em cópias de `PESSOAL.DBF` (`RecLen=36`) e `ALUNOS.DBF` (`RecLen=41`); registros existentes ficaram intactos, tamanho físico permaneceu 1024 bytes e a data atual foi gravada como `10/27/26`.
 - Versao 2.0 Fork preparada; executavel e DSK de teste incluem `APPEND BLANK`, `PESSOAL.DBF` e `ALUNOS.DBF`. Artefatos locais em `release/2.0/`; a publicacao GitHub depende de login.
+- Commit `f499fc1` e tag `2.0` enviados para `origin`. A página GitHub Release não foi criada: `gh auth status` informa que não há login.
 - Teste negativo: `APPEND BLANK` em `CLIENTES.DBF` (DBF III, versão `0x03`) retorna formato/mutação sem suporte. Falta comparar o arquivo antes/depois para confirmar ausência de alterações.
 - `resource/PESSOAL.DBF`: assinatura 0x02, cabecalho de 521 bytes, seis registros de 36 bytes; leitura validada no openMSX. Duas amostras DBF II tem o marcador 0x1A no offset 0x2E1, mas padding diferente: no DSK original, 286 x 0xFF; em resource/PESSOAL.DBF, 143 x 0x00 e 143 x 0xFF. Nao generalizar o padding.
 - `resource/ALUNOS.DBF`: DBF II 0x02, cabecalho de 521 bytes, seis registros de 41 bytes e campos N(5), C(30), N(3), C(1), N(1); usuario validou USE, LIST, DISPLAY STRUCTURE, GO 6 e DISPLAY no openMSX.
@@ -49,11 +50,12 @@ data/CLIENTES.DBF. Modulos e libs registrados em project/project_config.js.
 - Novo comando SET COLOR TO W+/B (estilo dBASE) ou SET COLOR TO 15,4 (paleta MSX); alias COLOR.
 
 === PROXIMOS PASSOS (proxima sessao) ===
-1. Verificar byte a byte que `CLIENTES.DBF` não muda quando DBF III é recusado; testar EOF inválido, limite de 65.535 registros e rollback após falha de seek/escrita.
-2. Implementar `REPLACE`, `DELETE` e `RECALL`; testar byte a byte em cópias de `PESSOAL` e `ALUNOS`.
-3. Implementar `PACK` seguro com arquivo temporario e comparacao byte a byte.
-4. Completar o núcleo MSX: comandos e NDX documentados, expressões e modo programável conforme os livros.
-5. Depois de estabilizar o núcleo, avaliar o editor interno inspirado no TED e a integração da suite com WordStar 3.3/4.0 e SuperCalc 2/3.
+1. Fazer `gh auth login` e criar a página GitHub Release `2.0` anexando os arquivos em `release/2.0/`.
+2. Verificar byte a byte que `CLIENTES.DBF` não muda quando DBF III é recusado; testar EOF inválido, limite de 65.535 registros e rollback após falha de seek/escrita.
+3. Implementar `REPLACE`, `DELETE` e `RECALL`; testar byte a byte em cópias de `PESSOAL` e `ALUNOS`.
+4. Implementar `PACK` seguro com arquivo temporario e comparacao byte a byte.
+5. Completar o núcleo MSX: comandos e NDX documentados, expressões e modo programável conforme os livros.
+6. Depois de estabilizar o núcleo, avaliar o editor interno inspirado no TED e a integração da suite com WordStar 3.3/4.0 e SuperCalc 2/3.
 
 === DIRECAO FUTURA: EDITOR INTERNO ===
 - Decidido em 2026-10-27: criar futuramente um editor de tela cheia integrado ao dBASE para arquivos .PRG, usando o TED de msx2026/ como referencia e fonte autorizada para adaptacao.
