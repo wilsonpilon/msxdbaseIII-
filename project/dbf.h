@@ -19,6 +19,7 @@ enum DbfError
 	DBF_ERR_FORMAT,      // cabecalho invalido ou versao nao suportada
 	DBF_ERR_LIMITS,      // excede DBF_MAX_FIELDS ou DBF_MAX_RECLEN
 	DBF_ERR_RANGE,       // numero de registro fora do arquivo
+	DBF_ERR_WRITE,       // falha ao gravar ou formato sem suporte a escrita
 };
 
 typedef struct DbfField
@@ -33,6 +34,7 @@ typedef struct DbfField
 typedef struct Dbf
 {
 	u8  Handle;                    // PFILE_INVALID quando fechado
+	u8  Version;
 	u32 RecCount;
 	u16 HeaderLen;
 	u16 RecLen;
@@ -60,6 +62,9 @@ bool Dbf_IsOpen(const Dbf* db);
 
 // Vai para o registro n (1..RecCount) e le seus dados
 u8 Dbf_Goto(Dbf* db, u32 n);
+
+// Acrescenta um registro em branco em DBF II MSX.
+u8 Dbf_AppendBlank(Dbf* db, const c8* path);
 
 // Move n registros (pode ser negativo). Passar do fim deixa Eof, antes do inicio Bof
 u8 Dbf_Skip(Dbf* db, i32 n);

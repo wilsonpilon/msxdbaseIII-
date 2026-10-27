@@ -8,25 +8,26 @@ Legenda: **Confirmado** = comportamento encontrado na fonte; **Parcial** = há e
 
 | Requisito | Evidência MSX | Estado no projeto |
 |---|---|---|
-| Arquivo de dados `.DBF`, com registros e campos de tamanho fixo | Manual oficial, cap. 4, pp. 4-1 a 4-5 | Pendente: a engine atual lê DBF III, não a variante MSX |
-| Tipos de campo compatíveis: Character, Numeric e Logical (`C/N/L`) | Manual oficial, cap. 4, pp. 4-3 a 4-5 | Pendente na engine MSX |
+| Arquivo de dados `.DBF`, com registros e campos de tamanho fixo | Manual oficial, cap. 4, pp. 4-1 a 4-5; `resource/PESSOAL.DBF` | Leitor DBF II (`0x02`) validado no openMSX; DBF III (`0x03/0x83`) permanece para fixture/interoperabilidade |
+| Tipos de campo compatíveis: Character, Numeric e Logical (`C/N/L`) | Manual oficial, cap. 4, pp. 4-3 a 4-5; descritores de `PESSOAL.DBF` | Leitor preserva e exibe C/N e interpreta L; validado com DBF II no openMSX |
 | Nome de campo com até 10 caracteres; campo Character com até 254 posições | Manual oficial, cap. 4, pp. 4-3 a 4-5 | Pendente: confirmar limites completos e implementar |
 | Precisão numérica publicada de 16 dígitos | Manual oficial, cap. 4, p. 4-5; apresentação do produto, cap. 1 | Pendente: definir representação numérica sem ponto flutuante |
 | Até 65.535 registros | Manual oficial, cap. 4, p. 4-1 | Pendente: confirmar codificação do contador no DBF MSX |
-| Cabeçalho DBF II | `PESSOAL.DBF`: versão `0x02`, contador `u16` little-endian nos bytes 1-2, data MM/DD/YY nos bytes 3-5, tamanho do registro `u16` nos bytes 6-7; cabeçalho fixo de 521 bytes | Implementado no leitor; ainda validar no openMSX |
-| Descritores DBF II | `PESSOAL.DBF`: 32 slots de 16 bytes desde byte 8; nome 0-10, tipo 11, tamanho 12, endereço em memória 13-14 (ignorado), decimais 15; byte 520 = `0x00` se menos de 32 campos ou `0x0D` com 32 | Implementado no leitor; quatro campos conferidos |
-| Registros DBF II | `PESSOAL.DBF`: início no byte 521; `RecLen=36`, seis registros, um byte de exclusão mais campos `C(15), C(10), N(5), C(5)` | Implementado no leitor; conteúdo decodificado por análise binária, falta execução no emulador |
-| Padding/EOF físico | A amostra tem 1024 bytes embora os seis registros ocupem 216 bytes após o cabeçalho | Pendente: não presumir terminador nem semântica de padding para escrita/`PACK` |
+| Cabeçalho DBF II | `PESSOAL.DBF`: versão `0x02`, contador `u16` little-endian nos bytes 1-2, data MM/DD/YY nos bytes 3-5, tamanho do registro `u16` nos bytes 6-7; cabeçalho fixo de 521 bytes | Parser e leitura validados no openMSX |
+| Descritores DBF II | `PESSOAL.DBF`: 32 slots de 16 bytes desde byte 8; nome 0-10, tipo 11, tamanho 12, endereço em memória 13-14 (ignorado), decimais 15; byte 520 = `0x00` se menos de 32 campos ou `0x0D` com 32 | Leitura e `DISPLAY STRUCTURE` validados no openMSX; quatro campos conferidos |
+| Registros DBF II | `PESSOAL.DBF`: início no byte 521; `RecLen=36`, seis registros, um byte de exclusão mais campos `C(15), C(10), N(5), C(5)` | `LIST`, `GO 6` e `DISPLAY` validados pelo usuário no openMSX |
+| Registros DBF II | `ALUNOS.DBF`: início no byte 521; `RecLen=41`, seis registros e campos `N(5), C(30), N(3), C(1), N(1)` | `USE ALUNOS`, `LIST`, `DISPLAY STRUCTURE`, `GO 6` e `DISPLAY` validados pelo usuário no openMSX |
+| Padding/EOF físico e `APPEND BLANK` | DSK original e `PESSOAL.DBF` usam `RecLen=36`, EOF `0x2E1`; `ALUNOS.DBF` usa `RecLen=41`, EOF `0x2FF`. No original, append substitui EOF por registro de espaços, atualiza contador/data, grava novo `0x1A` e preenche o tail até o tamanho físico com `0xFF` | Implementado e comparado byte a byte em cópias de `PESSOAL` e `ALUNOS`; tamanhos ficaram 1024 bytes e os registros anteriores permaneceram iguais. `PACK` e rollback em erro ainda pendentes |
 
 ## Comandos e comportamento
 
 | Comando/área | Regra confirmada para MSX | Estado no projeto |
 |---|---|---|
-| `USE` | Abre ou fecha o arquivo ativo; o manual descreve extensão `.DBF` | Parcial: parser agora aceita DBF II MSX e DBF III; testar `USE PESSOAL` no openMSX |
+| `USE` | Abre ou fecha o arquivo ativo; o manual descreve extensão `.DBF` | `USE PESSOAL` e `USE ALUNOS` validados com DBF II no openMSX |
 | `CREATE` | Define estrutura por nome, tipo, tamanho e casas decimais; tipos listados: `C/N/L` | Pendente |
-| `LIST`, `DISPLAY`, `GO`, `SKIP` | Referência do manual, cap. 6; navegação por registro físico/ordem ativa | Validado pelo usuário no openMSX com DBF III; executar novamente usando `PESSOAL.DBF` |
+| `LIST`, `DISPLAY`, `GO`, `SKIP` | Referência do manual, cap. 6; navegação por registro físico/ordem ativa | `LIST`, `DISPLAY STRUCTURE`, `GO 6` e `DISPLAY` validados com DBF II (`PESSOAL` e `ALUNOS`); `SKIP` permanece validado com DBF III |
 | `APPEND` | Entrada interativa de um registro por vez; atualiza índices ativos | Pendente |
-| `APPEND BLANK` | Adiciona um registro em branco sem entrar na tela de inclusão | Pendente |
+| `APPEND BLANK` | Adiciona um registro em branco sem entrar na tela de inclusão; no original MSX, substitui EOF, atualiza contador/data e mantém o tamanho físico preenchendo o tail com `0xFF` | Implementado e validado byte a byte em DBF II (`PESSOAL`, `ALUNOS`); `CLIENTES.DBF` (`0x03`) é recusado como esperado; falta confirmar por comparação que o arquivo recusado não mudou |
 | `REPLACE` | Altera campos; sem escopo/cláusula, atua no registro atual; índices ativos precisam ser atualizados | Pendente |
 | `DELETE` | Marca o registro com `*`; não o remove fisicamente | Pendente |
 | `RECALL` | Recupera registros marcados, sujeito ao escopo; não recupera registros já removidos por `PACK` | Pendente |

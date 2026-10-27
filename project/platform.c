@@ -24,6 +24,14 @@ void Platform_Detect(void)
 	}
 }
 
+void Platform_GetDate(PlatformDate* date)
+{
+	const DOS_Time* now = DOS_GetTime();
+	date->Year = (u8)(now->Year % 100);
+	date->Month = now->Month;
+	date->Day = now->Date;
+}
+
 u8 PFile_OpenRead(const c8* path)
 {
 	return DOS_OpenHandle(path, O_RDONLY);
@@ -53,7 +61,12 @@ bool PFile_Seek(u8 file, u32 offset)
 
 u16 PFile_Read(u8 file, void* buffer, u16 size)
 {
-	return DOS_ReadHandle(file, buffer, size);
+	u16 bytesRead = DOS_ReadHandle(file, buffer, size);
+#if DOS_USE_VALIDATOR
+	if ((bytesRead == PFILE_ERROR) && (DOS_GetLastError() == DOS_ERR_EOF))
+		return 0;
+#endif
+	return bytesRead;
 }
 
 u16 PFile_Write(u8 file, const void* buffer, u16 size)

@@ -4,14 +4,15 @@ Clone *clean room* do dBASE II para MSX, com melhorias de interface e evolucao
 gradual de recursos do dBASE III. O escopo e o roteiro estao em
 [SPEC.md](./SPEC.md).
 
-Versao atual: **1.3 Shell**. Veja as [notas do release](./RELEASE.md) e o
+Versao atual: **2.0 Fork**. Veja as [notas do release](./RELEASE.md) e o
 [Changelog](./Changelog.MD).
 
 ## Estado atual
 
 O projeto usa C/SDCC, MSXgl e MSX-DOS 2. A CLI oferece console de 80 colunas,
-comandos de navegacao e leitura inicial de DBF II MSX, alem de DBF III para
-interoperabilidade e testes.
+comandos de navegação e leitura de DBF II MSX e DBF III para interoperabilidade.
+`APPEND BLANK` grava registros vazios em DBF II; os demais comandos de mutação e
+`PACK` ainda estão em desenvolvimento.
 
 ## Compilar no Windows
 
@@ -21,8 +22,9 @@ Node.js disponível no `PATH`, além das ferramentas SDCC e MSXhex esperadas em
 `MSXgl/tools`.
 O console usa a fonte ASCII embutida do MSXgl para que pontuação e símbolos
 correspondam aos códigos das strings e para manter o cursor na linha de base.
-O disco de teste inclui `PESSOAL.DBF`, criado no dBASE II para MSX; o layout foi
-implementado no leitor, mas ainda precisa de validação funcional no openMSX.
+O disco de teste inclui `PESSOAL.DBF` e `ALUNOS.DBF`, ambos DBF II MSX. A leitura
+dos dois foi validada no openMSX; `APPEND BLANK` foi comparado byte a byte em
+cópias, incluindo arquivos com tamanhos de registro diferentes.
 
 O perfil está configurado para MSX2 (`Machine = "2"`) e MSX-DOS 2
 (`Target = "DOS2"`). O build gera `project/out/msxdbase.com` e, quando a

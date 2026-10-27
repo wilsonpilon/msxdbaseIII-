@@ -19,10 +19,20 @@ typedef struct PlatformInfo
 	u16 MapperFreeKB;   // RAM mapeada livre, em KB
 } PlatformInfo;
 
+typedef struct PlatformDate
+{
+	u8 Year;  // ano com dois digitos
+	u8 Month;
+	u8 Day;
+} PlatformDate;
+
 extern PlatformInfo g_Platform;
 
 // Detecta MSX-DOS e Memory Mapper. Chamar uma vez na inicializacao.
 void Platform_Detect(void);
+
+// Retorna a data local do MSX-DOS em ano, mes e dia.
+void Platform_GetDate(PlatformDate* date);
 
 //-----------------------------------------------------------------------------
 // Arquivos (por handle do MSX-DOS 2)

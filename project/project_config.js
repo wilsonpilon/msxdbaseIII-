@@ -7,7 +7,7 @@ CheckVersion = false;
 AppSignature = false;
 CompileComplexity = "Default";
 DiskSize = "720K";
-DiskFiles = [ "data/CLIENTES.DBF", "../resource/PESSOAL.DBF" ];
+DiskFiles = [ "data/CLIENTES.DBF", "../resource/PESSOAL.DBF", "../resource/ALUNOS.DBF" ];
 
 if (process.platform === "win32")
 	DskTool = `${ToolsDir}build/msxtar/msxtar.exe`;

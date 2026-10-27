@@ -18,8 +18,8 @@ incorporado ao SPEC (secao 6) e fica so como historico.
 
 === ESTADO ATUAL ===
 Fase 0 (infraestrutura): CONCLUIDA.
-Leitor DBF somente leitura: DBF II MSX (0x02) e DBF III (0x03/0x83); build validado, leitura DBF II ainda nao testada no openMSX.
-Versao preparada: 1.3 Shell (tag 1.3). O comando VER exibe a versao do executavel;
+Leitor DBF II MSX (0x02) e DBF III (0x03/0x83); APPEND BLANK grava DBF II.
+Versao preparada: 2.0 Fork (tag 2.0). O comando VER exibe a versao do executavel;
 builds bem-sucedidos incrementam Y automaticamente; use .\build.ps1 -KeepVersion
 durante testes repetidos.
 Codigo em project/: main.c, console.c, prompt.c, commands.c, dbf.c, platform.c (+ .h),
@@ -31,11 +31,16 @@ data/CLIENTES.DBF. Modulos e libs registrados em project/project_config.js.
 - Corrigido texto espacado (PRINT_WIDTH_1 / PRINT_HEIGHT_1) e cursor fixo da BIOS (CSRSW=0).
 - Console 80x24 com rolagem e edicao de linha; prompt "."; HELP/CLEAR/QUIT.
 - Marco 0: camada platform (DOS, Memory Mapper, arquivos por handle) e comando VER.
-- Marco 1: engine DBF II MSX (0x02) e DBF III (0x03/0x83); comandos USE, LIST, DISPLAY, GO, SKIP e STRUCTURE. DBF III foi validado pelo usuario no openMSX; DBF II aguarda validacao.
+- Marco 1: engine DBF II MSX (0x02) e DBF III (0x03/0x83); o usuario validou `USE PESSOAL`, `LIST`, `DISPLAY STRUCTURE`, `GO 6` e `DISPLAY` com DBF II no openMSX.
 - Fontes MSX consultadas por OCR: manual confirma campos C/N/L, ate 65.535 registros, campos de ate 254 caracteres e exclusao logica por '*'; livros descrevem APPEND/REPLACE/DELETE/RECALL/PACK e os modos interativo/programavel.
 - Prioridade invertida: compatibilidade dBASE II Plus para MSX primeiro; dBASE III como extensao posterior. Matriz em DBASE_II_MSX_COMPATIBILITY.md.
-- Camada platform agora implementa abrir/criar/escrever/renomear/apagar arquivos via MSX-DOS 2.
-- `resource/PESSOAL.DBF` confirmou assinatura 0x02, cabecalho de 521 bytes, descritores de 16 bytes e registros de 36 bytes; `dbf.c` agora le DBF II e DBF III. A amostra entrou na imagem DSK; build passou, falta validar no openMSX.
+- Camada platform: wrappers de abrir/criar/ler/escrever/seek/tamanho/renomear/apagar passaram teste runtime no openMSX. `PFile_Read` converte `DOS_ERR_EOF` em zero, sem mascarar outros erros.
+- `APPEND BLANK` implementado para DBF II. No original, contador e data são atualizados, o marcador EOF é movido após o registro em espaços e o restante do arquivo físico recebe `0xFF`.
+- Comparação byte a byte passou em cópias de `PESSOAL.DBF` (`RecLen=36`) e `ALUNOS.DBF` (`RecLen=41`); registros existentes ficaram intactos, tamanho físico permaneceu 1024 bytes e a data atual foi gravada como `10/27/26`.
+- Versao 2.0 Fork preparada; executavel e DSK de teste incluem `APPEND BLANK`, `PESSOAL.DBF` e `ALUNOS.DBF`. Artefatos locais em `release/2.0/`; a publicacao GitHub depende de login.
+- Teste negativo: `APPEND BLANK` em `CLIENTES.DBF` (DBF III, versão `0x03`) retorna formato/mutação sem suporte. Falta comparar o arquivo antes/depois para confirmar ausência de alterações.
+- `resource/PESSOAL.DBF`: assinatura 0x02, cabecalho de 521 bytes, seis registros de 36 bytes; leitura validada no openMSX. Duas amostras DBF II tem o marcador 0x1A no offset 0x2E1, mas padding diferente: no DSK original, 286 x 0xFF; em resource/PESSOAL.DBF, 143 x 0x00 e 143 x 0xFF. Nao generalizar o padding.
+- `resource/ALUNOS.DBF`: DBF II 0x02, cabecalho de 521 bytes, seis registros de 41 bytes e campos N(5), C(30), N(3), C(1), N(1); usuario validou USE, LIST, DISPLAY STRUCTURE, GO 6 e DISPLAY no openMSX.
 - Console agora usa fonte ASCII embutida do MSXgl; removido o `VRAM.DAT` incompatível com a pontuacao das strings. Cursor usa underscore ASCII alinhado à base; falta conferir no openMSX.
 - Banco de teste CLIENTES.DBF (5 registros, 1 excluido) + script gerador.
 - Documentacao reorganizada: SPEC (completo), OUTLINE (progresso), resume.txt.
@@ -44,11 +49,22 @@ data/CLIENTES.DBF. Modulos e libs registrados em project/project_config.js.
 - Novo comando SET COLOR TO W+/B (estilo dBASE) ou SET COLOR TO 15,4 (paleta MSX); alias COLOR.
 
 === PROXIMOS PASSOS (proxima sessao) ===
-1. No openMSX, executar `USE PESSOAL`, `LIST`, `DISPLAY STRUCTURE`, `GO 6` e conferir os seis registros, a pontuacao e o cursor.
-2. Confirmar o comportamento de EOF/padding do arquivo original e testar os wrappers de escrita da platform.
-3. Implementar APPEND BLANK, REPLACE, DELETE e RECALL; depois PACK seguro com comparacao byte a byte.
-4. Completar o nucleo MSX: comandos e NDX documentados, expressoes e modo programavel conforme os livros.
-5. Deixar recursos exclusivos de dBASE III e TUI avancada para depois da conformidade MSX.
+1. Verificar byte a byte que `CLIENTES.DBF` não muda quando DBF III é recusado; testar EOF inválido, limite de 65.535 registros e rollback após falha de seek/escrita.
+2. Implementar `REPLACE`, `DELETE` e `RECALL`; testar byte a byte em cópias de `PESSOAL` e `ALUNOS`.
+3. Implementar `PACK` seguro com arquivo temporario e comparacao byte a byte.
+4. Completar o núcleo MSX: comandos e NDX documentados, expressões e modo programável conforme os livros.
+5. Depois de estabilizar o núcleo, avaliar o editor interno inspirado no TED e a integração da suite com WordStar 3.3/4.0 e SuperCalc 2/3.
+
+=== DIRECAO FUTURA: EDITOR INTERNO ===
+- Decidido em 2026-10-27: criar futuramente um editor de tela cheia integrado ao dBASE para arquivos .PRG, usando o TED de msx2026/ como referencia e fonte autorizada para adaptacao.
+- Nao iniciar TED.COM como processo externo nem incorporar seu codigo como bloco monolitico. Separar buffer/edicao, UI/teclado, arquivos via platform e integracao com comandos/menus.
+- O editor e os menus avancados ficam depois da validacao e estabilizacao do nucleo DBF. WordStar pode permanecer opcional e independente na suite.
+- Proximo passo logico: cobrir rollback e limites de escrita, depois implementar `REPLACE`, `DELETE` e `RECALL`. A regra de `APPEND BLANK` no original já foi observada e reproduzida.
+
+=== DIRECAO FUTURA: SUITE INTEGRADA ===
+- Intencao registrada em 2026-10-27: reunir dBASE, WordStar 3.3 ou 4.0 e SuperCalc 2 ou 3 em uma suite para MSX2/MSX-DOS 2.
+- Tratar WordStar e SuperCalc como aplicativos independentes integrados por menu/launcher e arquivos de intercambio; nao presumir compatibilidade das versoes ou formatos antes de testar.
+- Definir como exportar dados do dBASE para planilha e como compartilhar resultados em texto com o WordStar.
 
 === VERSIONAMENTO ===
 - X representa marco funcional e usa codinome de conceito Unix/C classico, sem nomes de pessoas.

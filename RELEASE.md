@@ -1,5 +1,26 @@
 # Releases
 
+## 2.0 Fork: APPEND BLANK para DBF II MSX
+
+Titulo do release GitHub: `Fork: APPEND BLANK para DBF II MSX`.
+
+- Implementado `APPEND BLANK` para DBF II MSX (`0x02`); DBF III é recusado para mutações.
+- O comando grava um registro preenchido com espaços, atualiza contador e data, move o marcador `0x1A` e preenche o restante do tamanho físico com `0xFF`.
+- A data vem de MSX-DOS 2; corrigido o uso do dia do mês (`DOS_Time.Date`) em vez do dia da semana.
+- O EOF de leitura do MSX-DOS (`DOS_ERR_EOF`) é normalizado para zero em `PFile_Read`, sem mascarar outros erros.
+- Teste de referência executado com dBASE II original em DSK scratch; `APPEND BLANK` alterou a contagem 6→7 e preservou o tamanho físico de 1024 bytes.
+- Comparação byte a byte do clone passou em cópias de `PESSOAL.DBF` (`RecLen=36`) e `ALUNOS.DBF` (`RecLen=41`); registros anteriores permaneceram idênticos.
+- A imagem inclui `CLIENTES.DBF`, `PESSOAL.DBF` e `ALUNOS.DBF`.
+
+Limitações conhecidas: `REPLACE`, `DELETE`, `RECALL` e `PACK` não estão implementados. Ainda faltam testes de rollback sob falhas de seek/escrita, arquivo com EOF inválido, limite de registros e confirmação byte a byte de que DBF III recusado permaneça intacto. A página de GitHub Release depende de autenticação GitHub; os artefatos locais estão em `release/2.0/`.
+
+Downloads locais:
+- [Executável MSX-DOS 2](release/2.0/msxdbase-2.0.com)
+- [Imagem de disco openMSX](release/2.0/DOS2_msxdbase-2.0.dsk)
+- [Pacote ZIP](release/msxdbase-2.0-downloads.zip)
+
+Tag: `2.0`
+
 ## 1.3 Shell: leitura inicial de DBF II MSX
 
 Titulo do release GitHub: `Shell: leitura inicial de DBF II MSX`.

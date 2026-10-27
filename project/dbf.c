@@ -31,6 +31,7 @@ static u32 Rd32(const u8* p)
 void Dbf_Init(Dbf* db)
 {
 	db->Handle = PFILE_INVALID;
+	db->Version = 0;
 	db->RecCount = 0;
 	db->FieldCount = 0;
 	db->RecNo = 0;
@@ -58,6 +59,7 @@ static u8 ReadHeader(Dbf* db)
 
 	if (PFile_Read(db->Handle, hdr, 1) != 1)
 		return DBF_ERR_READ;
+	db->Version = hdr[0];
 
 	if (hdr[0] == DBF_VER_II)
 	{
@@ -192,6 +194,99 @@ u8 Dbf_Goto(Dbf* db, u32 n)
 	db->Bof = FALSE;
 	db->Eof = FALSE;
 	return DBF_OK;
+}
+
+u8 Dbf_AppendBlank(Dbf* db, const c8* path)
+{
+	if (!Dbf_IsOpen(db))
+		return DBF_ERR_OPEN;
+	if (db->Version != DBF_VER_II)
+		return DBF_ERR_WRITE;
+	if (db->RecCount >= 0xFFFFUL)
+		return DBF_ERR_LIMITS;
+
+	u32 recordOffset = (u32)db->HeaderLen + db->RecCount * (u32)db->RecLen;
+	u8 writeHandle = PFile_OpenReadWrite(path);
+	if (writeHandle == PFILE_INVALID)
+		return DBF_ERR_WRITE;
+
+	u8 oldEof;
+	bool headerWritten;
+	if (!PFile_Seek(writeHandle, recordOffset)
+		|| (PFile_Read(writeHandle, &oldEof, 1) != 1)
+		|| (oldEof != 0x1A))
+	{
+		PFile_Close(writeHandle);
+		return DBF_ERR_FORMAT;
+	}
+
+	PlatformDate date;
+	Platform_GetDate(&date);
+	u8 blankRecord[DBF_MAX_RECLEN];
+	u8 padding[16];
+	for (u16 i = 0; i < db->RecLen; i++)
+		blankRecord[i] = ' ';
+	for (u8 i = 0; i < sizeof(padding); i++)
+		padding[i] = 0xFF;
+
+	if (!PFile_Seek(writeHandle, recordOffset)
+		|| (PFile_Write(writeHandle, blankRecord, db->RecLen) != db->RecLen))
+		goto restore_eof;
+	if (PFile_Write(writeHandle, "\x1A", 1) != 1)
+		goto restore_eof;
+
+	u32 physicalSize = PFile_Size(writeHandle);
+	u32 paddingOffset = recordOffset + db->RecLen + 1;
+	while (paddingOffset < physicalSize)
+	{
+		u32 remaining = physicalSize - paddingOffset;
+		u16 chunkSize = (remaining > sizeof(padding)) ? sizeof(padding) : (u16)remaining;
+		if (!PFile_Seek(writeHandle, paddingOffset)
+			|| (PFile_Write(writeHandle, padding, chunkSize) != chunkSize))
+			goto restore_eof;
+		paddingOffset += chunkSize;
+	}
+
+	u16 newCount = (u16)(db->RecCount + 1);
+	u8 headerUpdate[5];
+	u8 oldHeader[5];
+	headerUpdate[0] = (u8)newCount;
+	headerUpdate[1] = (u8)(newCount >> 8);
+	headerUpdate[2] = date.Month;
+	headerUpdate[3] = date.Day;
+	headerUpdate[4] = date.Year;
+	oldHeader[0] = (u8)db->RecCount;
+	oldHeader[1] = (u8)(db->RecCount >> 8);
+	oldHeader[2] = db->LastUpdate[1];
+	oldHeader[3] = db->LastUpdate[2];
+	oldHeader[4] = db->LastUpdate[0];
+	headerWritten = PFile_Seek(writeHandle, 1);
+	if (headerWritten)
+		headerWritten = PFile_Write(writeHandle, headerUpdate, sizeof(headerUpdate)) == sizeof(headerUpdate);
+	if (!headerWritten)
+	{
+		if (PFile_Seek(writeHandle, 1))
+			PFile_Write(writeHandle, oldHeader, sizeof(oldHeader));
+		goto restore_eof;
+	}
+
+	PFile_Close(writeHandle);
+	db->RecCount = newCount;
+	db->LastUpdate[0] = date.Year;
+	db->LastUpdate[1] = date.Month;
+	db->LastUpdate[2] = date.Day;
+	for (u16 i = 0; i < db->RecLen; i++)
+		db->Buffer[i] = blankRecord[i];
+	db->RecNo = newCount;
+	db->Bof = FALSE;
+	db->Eof = FALSE;
+	return DBF_OK;
+
+restore_eof:
+	if (PFile_Seek(writeHandle, recordOffset))
+		PFile_Write(writeHandle, &oldEof, 1);
+	PFile_Close(writeHandle);
+	return DBF_ERR_WRITE;
 }
 
 u8 Dbf_Skip(Dbf* db, i32 n)

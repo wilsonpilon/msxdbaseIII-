@@ -106,6 +106,7 @@ static void PrintError(u8 err)
 	case DBF_ERR_FORMAT: Console_Print("*** Formato DBF nao suportado pelo leitor atual\n"); break;
 	case DBF_ERR_LIMITS: Console_Print("*** DBF excede os limites (campos ou tamanho do registro)\n"); break;
 	case DBF_ERR_RANGE:  Console_Print("*** Registro fora do arquivo\n"); break;
+	case DBF_ERR_WRITE:  Console_Print("*** Falha de escrita ou formato sem suporte para mutacao\n"); break;
 	}
 }
 
@@ -578,6 +579,26 @@ static void Cmd_Skip(const c8* args)
 		Console_Print("*** Inicio de arquivo\n");
 }
 
+// APPEND BLANK - acrescenta um registro em branco
+static void Cmd_Append(const c8* args)
+{
+	const c8* word;
+	u8 wlen = NextWord(&args, &word);
+	if ((wlen == 0) || !WordIs(word, wlen, "BLANK"))
+	{
+		Console_Print("*** Uso: APPEND BLANK\n");
+		return;
+	}
+	if (!RequireDb())
+		return;
+
+	u8 err = Dbf_AppendBlank(&s_Db, s_DbName);
+	if (err == DBF_OK)
+		Console_Print("1 registro adicionado\n");
+	else
+		PrintError(err);
+}
+
 //=============================================================================
 // TABELA DE COMANDOS
 //=============================================================================
@@ -597,6 +618,7 @@ static const Command s_Commands[] =
 	{ "GO",      Cmd_Go,      "GO TOP|BOTTOM|n          move o ponteiro" },
 	{ "GOTO",    Cmd_Go,      0 },
 	{ "SKIP",    Cmd_Skip,    "SKIP [n]                 avanca/volta n registros" },
+	{ "APPEND",  Cmd_Append,  "APPEND BLANK             acrescenta registro vazio" },
 	{ "CLEAR",   Cmd_Clear,   "CLEAR                    limpa a tela" },
 	{ "SET",     Cmd_Set,     "SET COLOR TO W+/B|15,4   cores (texto/fundo)" },
 	{ "COLOR",   Cmd_Color,   0 },

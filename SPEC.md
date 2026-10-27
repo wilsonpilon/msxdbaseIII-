@@ -41,7 +41,7 @@ Como o Z80 possui barramento de endereçamento de 16 bits (64 KB visíveis por v
 ### 3.2 Formato de Dados e Compatibilidade
 * **Estrutura `.dbf` (dBASE II Plus para MSX):**
   * Registros de tamanho fixo e campos Character, Numeric e Logical; aplicar os limites publicados especificamente para a edição MSX.
-  * O layout principal da variante MSX foi confirmado em `resource/PESSOAL.DBF`; padding/EOF e semântica de escrita ainda precisam de testes antes de habilitar mutações. Compatibilidade com arquivos CP/M só será declarada quando validada separadamente.
+  * O layout da variante MSX foi confirmado em `resource/PESSOAL.DBF`; `resource/ALUNOS.DBF` acrescenta uma fixture DBF II com `RecLen=41` para testar outros offsets de campo. `APPEND BLANK` foi observado no dBASE II original: substitui o EOF antigo por um registro de espaços, atualiza contador/data, grava novo `0x1A` e preenche o restante do tamanho físico com `0xFF`. A regra está implementada para DBF II e comparada byte a byte em cópias de `PESSOAL` e `ALUNOS`. Mutações DBF III não são suportadas. Compatibilidade com arquivos CP/M só será declarada quando validada separadamente.
 * **Indexação:** índices `.NDX` e comandos documentados no manual MSX pertencem ao núcleo dBASE II; formatos de outras versões são extensões posteriores.
 
 ---
@@ -216,6 +216,18 @@ Em caso de divergência, priorizar o manual oficial para o comportamento do prod
 
 A matriz de evidências, limites e estado de implementação está em [DBASE_II_MSX_COMPATIBILITY.md](DBASE_II_MSX_COMPATIBILITY.md). Ela também registra as seções em que o manual oficial informa limitações específicas da versão MSX.
 
+### 6.20 Editor interno de programas e interface
+O projeto terá um editor de tela cheia integrado ao próprio dBASE para criar e alterar arquivos `.PRG`; ele não será apenas um comando para iniciar `TED.COM` como processo externo. O TED de `msx2026/`, cujo uso foi autorizado pelo usuário, será referência de arquitetura e poderá servir de fonte para adaptação de rotinas, respeitando o escopo da autorização.
+
+O objetivo é aproveitar a experiência e as soluções do TED para edição de texto no MSX2, mas separar o editor em módulos compatíveis com o dBASE: buffer e operações de edição; entrada e apresentação; operações de arquivo por `platform`; e integração com os comandos e menus do ambiente. O código do TED é ligado ao seu próprio ciclo de execução e a serviços de MSX, então qualquer reaproveitamento precisa ser isolado e adaptado, não incorporado como um bloco monolítico.
+
+O editor avançado e os menus pertencem à evolução da interface, depois de estabilizar o núcleo de dados. A primeira entrega deverá ser pequena e compilável, priorizando edição de `.PRG`, navegação, inserção/exclusão, salvar/carregar e retorno ao prompt; busca, blocos e teclas de função podem vir em incrementos posteriores. O WordStar poderá continuar como aplicativo independente opcional da suíte, sem ser dependência do editor interno.
+
+### 6.21 Suíte integrada de produtividade
+A visão futura é reunir o dBASE, o WordStar 3.3 ou 4.0 e o SuperCalc 2 ou 3 em uma suíte para MSX2/MSX-DOS 2, com suporte ao perfil de hardware do projeto. WordStar e SuperCalc são aplicativos independentes: a integração pretendida é por um menu/launcher da suíte e por arquivos de intercâmbio, não por incorporar seus executáveis ao dBASE.
+
+As versões candidatas ainda precisam ser testadas quanto à execução no MSX-DOS 2, uso de teclado/tela, armazenamento e requisitos de memória. Também falta definir e validar como o dBASE exportará dados para uso em planilha e como resultados ou relatórios poderão ser compartilhados com o WordStar. Compatibilidade, formatos e redistribuição não devem ser presumidos antes dessa avaliação.
+
 ---
 
 ## 7. Notas Técnicas Verificadas (lições do ambiente MSXgl / MSX-DOS 2)
@@ -227,7 +239,7 @@ Fatos confirmados na prática; respeitar ao escrever código novo.
 - **Teclado:** `DIRIN` do MSX-DOS fazia a BIOS desenhar um cursor fixo na tela (mesmo com `M_CSRSW` = 0). Solução: `CHSNS` sem espera e `CHGET` só com tecla no buffer, aguardando com `halt`. `M_CSRSW` continua sendo zerado e restaurado ao sair (`Console_Done`). Setas retornam 0x1C-0x1F.
 - **Console:** Text2 80x24; tabela de nomes em `g_ScreenLayoutLow`; padrão 0 = célula em branco (a fonte é carregada com offset 1). Há uma cópia da tabela de nomes em RAM (1920 bytes): a rolagem é um `LDIR` na RAM seguido de uma única escrita ao VDP; textos são enviados em trechos por linha, sem `Print_*` por caractere.
 - **Cores:** `Console_SetColor(texto, fundo)` grava o registrador 7 do VDP. Comando `SET COLOR TO W+/B` (estilo dBASE: N B G R W, combinações BG/RB/GR, `+` = brilhante) ou `SET COLOR TO 15,4` (paleta MSX 0-15, extensão MSX); sem argumento volta a W+/N. Alias `COLOR`.
-- **Arquivos:** handles do MSX-DOS 2 (`DOS_OpenHandle`, `DOS_ReadHandle`, `DOS_SeekHandle`), `HANDLE_INVALID` = 0xFF; erro de leitura devolve 0xFFFF.
+- **Arquivos:** handles do MSX-DOS 2 (`DOS_OpenHandle`, `DOS_ReadHandle`, `DOS_SeekHandle`), `HANDLE_INVALID` = 0xFF; o MSXgl com validator retorna `0xFFFF` para `DOS_ERR_EOF` (`0xC7`). `PFile_Read` converte apenas EOF em zero, conforme seu contrato, e preserva outros erros como `PFILE_ERROR`; os wrappers de arquivo passaram um teste runtime no openMSX.
 - **Mapper:** `DOSMapper_Init()` + `DOSMapper_GetVarTable()` (módulo `dos_mapper`); cada segmento = 16 KB.
 - **Build:** `.\build.ps1` na raiz (usa `project/`). Módulos do projeto e bibliotecas ficam em `project/project_config.js`. Arquivos de dados vão em `DiskFiles`. **Fechar o openMSX antes de compilar**, senão a cópia do `.dsk` falha.
 - **Executar:** `openmsx -machine Boosted_MSX2_EN -ext msxdos2 -diska .\project\emul\dsk\DOS2_msxdbase.dsk`

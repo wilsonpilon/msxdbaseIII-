@@ -1,7 +1,7 @@
 # MSX dBASE III- / dBASE II+ Clone — OUTLINE VIVO
 
 Última atualização: 2026-10-27
-Status geral: **Leitor DBF II MSX implementado e compilando; falta validar no openMSX; versão 1.3 Shell preparada**
+Status geral: **Leitura DBF II validada; `APPEND BLANK` DBF II implementado e comparado byte a byte; versão 2.0 Fork**
 
 Este arquivo é o **diário de progresso**: o que foi feito, o que falta e o que vamos incluindo. A especificação completa está em [SPEC.md](SPEC.md); o resumo curto para retomada está em [resume.txt](resume.txt). Os dois devem ser atualizados junto com este ao fim de cada sessão.
 
@@ -37,24 +37,28 @@ Matriz de conformidade e evidências: [DBASE_II_MSX_COMPATIBILITY.md](DBASE_II_M
 - [~] Fonte ASCII embutida do MSXgl selecionada; substituiu `resource/vram.dat`, cuja pontuação não corresponde aos códigos ASCII; falta conferir texto e cursor no openMSX
 - [ ] 0.6 Detecção de MSX1 x MSX2 sem ler a ROM (a checagem antiga de versão foi removida porque lia a ROM)
 - [ ] 0.7 Teste em hardware real e em outras configurações de memória (512 KB e 1 MB, turbo R)
-- [~] 0.8 Gravação de arquivos na camada de plataforma (criar, escrever, renomear, apagar); wrappers compilam, falta teste em runtime
+- [x] 0.8 Gravação de arquivos na camada de plataforma (criar, escrever, renomear, apagar); wrappers testados em runtime no openMSX
 
 ## 4. Fase 1 — Núcleo dBASE II+ (CLI)
 
 ### 1.1 DBF somente leitura (Marco 1)
-- [~] Engine `dbf.c`: leitor DBF II MSX (`0x02`) e DBF III (`0x03/0x83`), navegação, marca de exclusão e validações (`DBF_ERR_*`); falta validar DBF II no emulador
+- [x] Engine `dbf.c`: leitor DBF II MSX (`0x02`) e DBF III (`0x03/0x83`), navegação, marca de exclusão e validações (`DBF_ERR_*`); DBF II validado pelo usuário no openMSX
 - [~] Comandos: `USE`, `LIST [STRUCTURE]`, `DISPLAY [STRUCTURE|ALL]`, `GO TOP|BOTTOM|n`, `SKIP [n]`, `CLEAR`, `VER`, `HELP`, `QUIT`
 - [~] Exibição de tipos C, N, L, D e M (memo apenas como texto "memo"); `LIST` com pausa por tela
 - [~] Banco de teste `project/data/CLIENTES.DBF` (5 registros, 1 excluído) gerado por `make_sample_dbf.ps1`
-- [x] **Validar o leitor atual no openMSX** (validação do usuário; cobre a amostra dBASE III, não conformidade dBASE II MSX)
-- [~] `resource/PESSOAL.DBF` confirma o layout DBF II e está incluído na imagem de teste; falta `USE PESSOAL` no openMSX
+- [x] **Validar o leitor no openMSX** com `resource/PESSOAL.DBF` (DBF II): `USE PESSOAL`, `LIST`, `DISPLAY STRUCTURE`, `GO 6` e `DISPLAY` funcionaram
+- [x] `resource/PESSOAL.DBF`: layout DBF II e leitura funcional confirmados no emulador
+- [x] `resource/ALUNOS.DBF`: DBF II com `RecLen=41`; usuário validou `USE`, `LIST`, `DISPLAY STRUCTURE`, `GO 6` e `DISPLAY` no openMSX
 - [ ] `DISPLAY` com `FOR`, `RECORD n`, listas de campos (depende de 1.3)
 - [ ] `COUNT`, `SET DELETED ON/OFF`
 
 ### 1.2 Escrita segura (Marco 2)
-- [~] Operações de arquivo na camada platform (abrir, criar, ler, escrever, renomear, apagar); compila, falta teste em execução
-- [ ] `APPEND BLANK`, `REPLACE`, `DELETE`, `RECALL`
-- [ ] Atualização segura do cabeçalho (contagem de registros, data) e marca 0x1A
+- [x] Operações de arquivo na camada platform (abrir, criar, ler, escrever, seek, tamanho, renomear e apagar); teste em runtime passou no openMSX
+- [x] `APPEND BLANK` para DBF II: grava registro de espaços, atualiza contagem/data, move `0x1A` e preenche o tail físico com `0xFF`; comparado byte a byte no scratch para `PESSOAL` (`RecLen=36`) e `ALUNOS` (`RecLen=41`)
+- [x] DBF III (`CLIENTES.DBF`, versão `0x03`) é recusado por `APPEND BLANK` com a mensagem de formato sem suporte; falta comparar o arquivo byte a byte para confirmar que não mudou
+- [ ] `REPLACE`, `DELETE`, `RECALL`
+- [x] Atualização do cabeçalho (contagem de registros e data) e marca `0x1A` validada em cópias
+- [ ] Testar rollback em erro de seek/escrita, EOF inválido, arquivo DBF III recusado sem alteração byte a byte e limite de 65.535 registros
 - [ ] `PACK` com arquivo temporário e recuperação após falha
 - [ ] `CREATE` (definição de estrutura) e `COPY STRUCTURE`
 - [ ] Testes de integridade (interrupção, disco cheio, somente leitura)
@@ -74,8 +78,10 @@ Matriz de conformidade e evidências: [DBASE_II_MSX_COMPATIBILITY.md](DBASE_II_M
 ### 1.5 Conformidade dBASE II MSX
 - [x] Confirmar cabeçalho de 521 bytes e descritores de 16 bytes com `resource/PESSOAL.DBF`
 - [x] Implementar leitura DBF II (`0x02`) mantendo DBF III apenas para fixture/interoperabilidade
-- [ ] Confirmar no emulador e criar testes byte a byte para gravação
-- [ ] Entender padding/EOF antes de implementar escrita e `PACK`
+- [x] Confirmar leitura DBF II no emulador
+- [x] Testar wrappers de arquivo da plataforma em runtime no openMSX
+- [x] Testes byte a byte de `APPEND BLANK` em cópias DBF II `PESSOAL` e `ALUNOS`
+- [x] Determinar a semântica de `APPEND BLANK` após EOF no dBASE II original; padding anterior varia, mas o original preenche com `0xFF` após mover o EOF
 
 ## 5. Índices NDX (núcleo dBASE II MSX)
 - [ ] Cobrir `INDEX`, `FIND`, `REINDEX`, `SET INDEX` conforme o manual MSX
@@ -91,11 +97,14 @@ Matriz de conformidade e evidências: [DBASE_II_MSX_COMPATIBILITY.md](DBASE_II_M
 
 ## 7. Fase 3 — Interface MSX avançada
 - [ ] Editor de linha melhor: setas, Home/End, histórico
+- [ ] Editor de tela cheia integrado para arquivos `.PRG`, usando o TED de `msx2026/` como referência e fonte autorizada para adaptação; separar buffer/edição, UI e acesso a arquivos pela plataforma, sem iniciar `TED.COM` como processo externo
+- [ ] Evoluir o editor interno com busca, blocos e teclas de função inspirados no TED
 - [ ] Janelas, menus, caixas, barra de estado, cores configuráveis
 - [ ] `@ lin,col SAY/GET`, `BROWSE`, `EDIT`, `APPEND` em formulário
 - [ ] Menu estilo Assistant; `HELP <comando>` e F1
 - [ ] Mouse opcional; 40/80 colunas
 - [ ] Manter sempre o modo console
+- [ ] Menu da suíte para dBASE, WordStar 3.3/4.0 e SuperCalc 2/3 como aplicativos independentes; testar compatibilidade no MSX-DOS 2 e definir formatos de troca de arquivos
 
 ---
 
@@ -107,7 +116,7 @@ Matriz de conformidade e evidências: [DBASE_II_MSX_COMPATIBILITY.md](DBASE_II_M
 | `project/console.c/.h` | tela 80x24, rolagem, teclado, edição de linha |
 | `project/prompt.c/.h` | laço do prompt `.` |
 | `project/commands.c/.h` | tabela e execução de comandos (transitória até o lexer) |
-| `project/dbf.c/.h` | engine DBF somente leitura (sem UI) |
+| `project/dbf.c/.h` | engine DBF II/III de leitura e `APPEND BLANK` DBF II (sem UI) |
 | `project/platform.c/.h` | MSX-DOS, Memory Mapper, arquivos |
 | `project/project_config.js` | módulos do projeto, bibliotecas, `DiskFiles` |
 | `project/msxgl_config.h` | opções do MSXgl |
@@ -127,6 +136,14 @@ Regra: nova funcionalidade de dados entra em módulo próprio sem depender de UI
 - 2026-10-26: primeira extensão MSX implementada (`SET COLOR TO`) antes da próxima fase.
 - 2026-10-26: versionamento `X.Y`; `X` marca marcos com codinomes Unix/C e `Y` avança em builds bem-sucedidos (pausável com `-KeepVersion`). Primeiro release: `1.2 Shell`.
 - 2026-10-27: release `1.3 Shell`, leitor inicial DBF II MSX e correção de fonte/cursor.
+- 2026-10-27: release `2.0 Fork`, primeira mutação de DBF II (`APPEND BLANK`) validada byte a byte em cópias de PESSOAL e ALUNOS.
+- 2026-10-27: marco `2.0 Fork`; `APPEND BLANK` DBF II observado no dBASE II original e implementado. Testado byte a byte em cópias de `PESSOAL` e `ALUNOS`; `CLIENTES.DBF` (`0x03`) é recusado para mutação.
+- 2026-10-27: decidido planejar um editor interno de programas inspirado no TED de `msx2026/`; aproveitar sua arquitetura e, dentro da autorização do autor, adaptar código em módulos próprios do dBASE. O TED não será aberto como processo externo; menus e editor avançado ficam para a fase de interface, após estabilizar o núcleo DBF.
+- 2026-10-27: usuário validou `USE PESSOAL`, `LIST`, `DISPLAY STRUCTURE`, `GO 6` e `DISPLAY` com DBF II no openMSX. Probe runtime dos wrappers passou; `PFile_Read` normaliza `DOS_ERR_EOF` para zero.
+- 2026-10-27: o dBASE II original foi executado numa cópia scratch. `APPEND BLANK` mudou contagem 6→7, data para `10/27/26`, substituiu o EOF em `0x2E1` por 36 espaços, gravou `0x1A` em `0x305` e deixou 250 bytes `0xFF` até o tamanho físico de 1024.
+- 2026-10-27: `APPEND BLANK` do projeto validado byte a byte em cópias de `PESSOAL` (`RecLen=36`) e `ALUNOS` (`RecLen=41`); registros anteriores permaneceram idênticos, novo EOF e padding conferidos.
+- Próximo passo: testar rollback e limites de escrita, provar por comparação que DBF III recusado não foi alterado e implementar `REPLACE`, `DELETE` e `RECALL`; `PACK` fica depois dos testes de integridade.
+- 2026-10-27: registrada a intenção de uma suíte integrada com dBASE, WordStar 3.3 ou 4.0 e SuperCalc 2 ou 3, mantendo os aplicativos independentes e integrando-os por menu e troca de arquivos; versões e formatos ainda precisam ser avaliados.
 
 ## 10. Backlog e ideias (adicionar aqui conforme surgirem)
 - Ferramenta no PC (host) para ler/validar DBF e comparar golden files.
@@ -134,6 +151,7 @@ Regra: nova funcionalidade de dados entra em módulo próprio sem depender de UI
 - Medir RAM residente e tempo de `LIST` em emulador e hardware real.
 - Decidir representação de Numeric (BCD x decimal fixo).
 - Nome definitivo do projeto.
+- Avaliar a execução no MSX-DOS 2 das versões WordStar 3.3/4.0 e SuperCalc 2/3 e definir a integração por menu e formatos de intercâmbio.
 
 ## 11. Rotina de fim de sessão
 1. Compilar e, se possível, testar no openMSX.
