@@ -17,7 +17,7 @@ incorporado ao SPEC (secao 6) e fica so como historico.
 5. Teste basico no prompt: ver / use clientes / list / display structure / go 3 / display / skip -1 / go bottom / quit
 
 === ESTADO ATUAL ===
-Release preparado: 3.1 Grep. Codigo em `project/`; build C/SDCC/MSXgl para MSX-DOS 2.
+Release publicado: 3.1 Grep (tag `3.1`, commit `597dce8`). Codigo em `project/`; build C/SDCC/MSXgl para MSX-DOS 2.
 DBF II (`0x02`) tem leitura e mutacoes basicas; DBF III continua somente leitura.
 `INSERT [BEFORE] [BLANK]`, `SET CONFIRM`, `APPEND`, filtros e `DISPLAY FILES` foram
 testados em copias no openMSX. O build completo atualiza `project/emul/dsk/DOS2_msxdbase.dsk`.
@@ -83,7 +83,7 @@ O worktree continha recursos comerciais locais nao publicados; ver `.gitignore`.
 - Release local `3.0 Grep` compilado e empacotado em `release/3.0/` e `release/msxdbase-3.0-downloads.zip`. Nenhuma tag ou publicacao GitHub foi criada.
 
 === PROXIMOS PASSOS ===
-1. Retomar em `main`, tag/release GitHub `3.1 Grep`; `gh` estava autenticado como `wilsonpilon`.
+1. Retomar em `main`; commit `597dce8` foi enviado e o GitHub Release `3.1` esta publicado.
 2. Testar `HELP DBASE` e `HELP <COMANDO>` com arquivo `DB8SEMSG.TXT` licenciado numa copia temporaria.
 3. Validar o viewer `SET MSX ON` + `SET HELP SCREEN` no DSK final: quadro, busca, rolagem, cores e saida Esc.
 4. Testar `INSERT` em BOF/EOF, limite de 65.535 registros e rollback sob falhas de seek/escrita.

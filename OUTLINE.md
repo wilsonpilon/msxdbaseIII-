@@ -1,7 +1,7 @@
 # MSX dBASE III- / dBASE II+ Clone — OUTLINE VIVO
 
 Última atualização: 2026-10-29
-Status geral: **Versão 3.1 Grep preparada; build validado, HELP TXT sem bloqueio; release GitHub em publicação**
+Status geral: **Versão 3.1 Grep publicada; build validado, HELP TXT sem bloqueio; SCREEN ainda precisa de validação visual**
 
 Este arquivo é o **diário de progresso**: o que foi feito, o que falta e o que vamos incluindo. A especificação completa está em [SPEC.md](SPEC.md); o resumo curto para retomada está em [resume.txt](resume.txt). Os dois devem ser atualizados junto com este ao fim de cada sessão.
 
@@ -170,6 +170,7 @@ Regra: nova funcionalidade de dados entra em módulo próprio sem depender de UI
 - 2026-10-29: marco `3.0 Grep`; release local empacotado com `.COM`, `.DSK` e notas. Publicacao externa/tag Git nao realizada.
 - 2026-10-29: preparado `3.1 Grep`; `HELP` sem argumentos usa resumo local, `Help_Init` inicializa o índice e `DB8SEMSG.TXT` é opcional no build. O `.COM` e o DSK local compilam; o release público não inclui o DSK nem o arquivo original.
 - 2026-10-29: `HELP` TXT com resumo local confirmado em cópia temporária do DSK. Abertura de tópicos externos e validação visual final do viewer SCREEN continuam pendentes.
+- 2026-10-29: commit `597dce8`, tag `3.1` e GitHub Release publicados em `origin`; assets limitados ao `.COM` e notas ZIP.
 - 2026-10-29: `INSERT [BEFORE] [BLANK]` implementado e validado em cópias DBF II; duas inclusões vazias foram ordenadas antes/depois do ponteiro, e `INSERT BEFORE` interativo gravou os dados no local correto sem deixar `.BAK`.
 - Próximo passo: validar limites BOF/EOF, limite de 65.535 registros e rollback do `INSERT`; depois iniciar `WHILE`/`SET FILTER TO` e os índices NDX.
 - 2026-10-27: registrada a intenção de uma suíte integrada com dBASE, WordStar 3.3 ou 4.0 e SuperCalc 2 ou 3, mantendo os aplicativos independentes e integrando-os por menu e troca de arquivos; versões e formatos ainda precisam ser avaliados.

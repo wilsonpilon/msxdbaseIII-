@@ -6,6 +6,7 @@ gradual de recursos do dBASE III. O escopo e o roteiro estao em
 
 Versao atual: **3.1 Grep**. Veja o [manual do usuario](./MANUAL.md), as
 [notas do release](./RELEASE.md) e o [Changelog](./Changelog.MD).
+Download: [GitHub Release 3.1](https://github.com/wilsonpilon/msxdbaseIII-/releases/tag/3.1).
 
 `HELP` sem argumentos mostra um resumo local e nao acessa o disco. `HELP DBASE`
 e `HELP <COMANDO>` podem carregar topicos de `DB8SEMSG.TXT`, fornecido pelo
