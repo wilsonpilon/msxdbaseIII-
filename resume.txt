@@ -78,6 +78,7 @@ O worktree continha recursos comerciais locais nao publicados; ver `.gitignore`.
 - Ajuda online: `HELP` sem argumentos mostra o resumo local; `HELP DBASE` e `HELP <COMANDO>` dependem do `DB8SEMSG.TXT` externo. `SET HELP TXT|SCREEN`; SCREEN exige `SET MSX ON`. O resumo TXT foi confirmado em DSK temporario. Abertura dos topicos externos e validacao final de SCREEN pendentes.
 - `Help_Init` inicializa flags/contadores BSS; tabela limitada a 160 topicos. `DB8SEMSG.TXT` e opcional no `DiskFiles` e nao e incluido no repositorio/release publico.
 - Build completo 3.1 passou e atualizou COM/DSK local. Publicacao 3.1 usa o COM sem anexar o DSK que carrega recursos originais.
+- `HELP` em modo SCREEN abriu o quadro e o resumo local no openMSX; o resumo `DISPLAY` foi corrigido para mostrar a sintaxe opcional completa. O build recompilou COM/DSK e o texto corrigido foi confirmado no COM; a captura da segunda execução não foi renovada. Busca, rolagem, cores e tópicos com `DB8SEMSG.TXT` ainda precisam validação dirigida.
 - `SET MSX` hoje controla cores e ajuda SCREEN; o gate das demais melhorias visuais/de entrada fica para as features seguintes.
 - Screenshots de APPEND, erro Logical, FOR, SET DELETED e DISPLAY FILES salvos em `docs/screenshots/` e incorporados ao README.
 - Release local `3.0 Grep` compilado e empacotado em `release/3.0/` e `release/msxdbase-3.0-downloads.zip`. Nenhuma tag ou publicacao GitHub foi criada.

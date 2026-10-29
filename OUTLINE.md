@@ -46,7 +46,7 @@ Matriz de conformidade e evidências: [DBASE_II_MSX_COMPATIBILITY.md](DBASE_II_M
 - [~] Comandos: `USE`, `LIST [STRUCTURE]`, `DISPLAY [FILES|STRUCTURE|ALL]`, `GO TOP|BOTTOM|n`, `SKIP [n]`, `APPEND [BLANK]`, `INSERT [BEFORE] [BLANK]`, `CLEAR`, `SET COLOR/DELETED/COLON/CONFIRM/HELP/MSX`, `VER`, `HELP`, `QUIT`
 - [x] `HELP` sem argumentos mostra resumo local sem acessar disco; estado do índice inicializado em `Help_Init`; limite do índice 160 tópicos para reduzir RAM
 - [~] `HELP DBASE` e `HELP <COMANDO>` dependem de `DB8SEMSG.TXT` local; recurso opcional, não redistribuído; testar novamente abertura e verbetes completos
-- [~] Viewer SCREEN tem quadro corrigido, cores estáveis e redesenho incremental; validar a janela visualmente no build 3.1 final
+- [~] Viewer SCREEN tem quadro corrigido, cores estáveis e redesenho incremental; quadro e resumo local confirmados visualmente; falta validar busca, rolagem, cores e saída, além dos tópicos externos
 - [~] `SET MSX OFF/ON` controla cores e HELP SCREEN; aplicar o gate a futuras melhorias visuais/de entrada conforme forem implementadas
 - [x] `DISPLAY FILES`: sem padrão lista DBFs com contagem/data do cabeçalho; `LIKE` usa padrões literais, sem exigir `USE`; runtime com e sem correspondências validado no openMSX
 - [~] Exibição de tipos C, N, L, D e M (memo apenas como texto "memo"); `LIST` com pausa por tela

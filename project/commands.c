@@ -1957,7 +1957,7 @@ static const Command s_Commands[] =
 {
 	{ "USE",     Cmd_Use,     "USE [arquivo]            abre/fecha um .DBF" },
 	{ "LIST",    Cmd_List,    "LIST [STRUCTURE]         lista os registros" },
-	{ "DISPLAY", Cmd_Display, "DISPLAY FILES [LIKE padrao]|STRUCTURE|ALL" },
+	{ "DISPLAY", Cmd_Display, "DISPLAY [FILES [LIKE padrao] | STRUCTURE | ALL]" },
 	{ "GO",      Cmd_Go,      "GO TOP|BOTTOM|n          move o ponteiro" },
 	{ "GOTO",    Cmd_Go,      0 },
 	{ "SKIP",    Cmd_Skip,    "SKIP [n]                 avanca/volta n registros" },
