@@ -1,7 +1,7 @@
 # MSX dBASE III- / dBASE II+ Clone — OUTLINE VIVO
 
-Última atualização: 2026-10-27
-Status geral: **Leitura DBF II validada; `APPEND BLANK` DBF II implementado e comparado byte a byte; versão 2.0 Fork**
+Última atualização: 2026-10-29
+Status geral: **Versão 3.1 Grep preparada; build validado, HELP TXT sem bloqueio; release GitHub em publicação**
 
 Este arquivo é o **diário de progresso**: o que foi feito, o que falta e o que vamos incluindo. A especificação completa está em [SPEC.md](SPEC.md); o resumo curto para retomada está em [resume.txt](resume.txt). Os dois devem ser atualizados junto com este ao fim de cada sessão.
 
@@ -43,30 +43,42 @@ Matriz de conformidade e evidências: [DBASE_II_MSX_COMPATIBILITY.md](DBASE_II_M
 
 ### 1.1 DBF somente leitura (Marco 1)
 - [x] Engine `dbf.c`: leitor DBF II MSX (`0x02`) e DBF III (`0x03/0x83`), navegação, marca de exclusão e validações (`DBF_ERR_*`); DBF II validado pelo usuário no openMSX
-- [~] Comandos: `USE`, `LIST [STRUCTURE]`, `DISPLAY [STRUCTURE|ALL]`, `GO TOP|BOTTOM|n`, `SKIP [n]`, `CLEAR`, `VER`, `HELP`, `QUIT`
+- [~] Comandos: `USE`, `LIST [STRUCTURE]`, `DISPLAY [FILES|STRUCTURE|ALL]`, `GO TOP|BOTTOM|n`, `SKIP [n]`, `APPEND [BLANK]`, `INSERT [BEFORE] [BLANK]`, `CLEAR`, `SET COLOR/DELETED/COLON/CONFIRM/HELP/MSX`, `VER`, `HELP`, `QUIT`
+- [x] `HELP` sem argumentos mostra resumo local sem acessar disco; estado do índice inicializado em `Help_Init`; limite do índice 160 tópicos para reduzir RAM
+- [~] `HELP DBASE` e `HELP <COMANDO>` dependem de `DB8SEMSG.TXT` local; recurso opcional, não redistribuído; testar novamente abertura e verbetes completos
+- [~] Viewer SCREEN tem quadro corrigido, cores estáveis e redesenho incremental; validar a janela visualmente no build 3.1 final
+- [~] `SET MSX OFF/ON` controla cores e HELP SCREEN; aplicar o gate a futuras melhorias visuais/de entrada conforme forem implementadas
+- [x] `DISPLAY FILES`: sem padrão lista DBFs com contagem/data do cabeçalho; `LIKE` usa padrões literais, sem exigir `USE`; runtime com e sem correspondências validado no openMSX
 - [~] Exibição de tipos C, N, L, D e M (memo apenas como texto "memo"); `LIST` com pausa por tela
 - [~] Banco de teste `project/data/CLIENTES.DBF` (5 registros, 1 excluído) gerado por `make_sample_dbf.ps1`
 - [x] **Validar o leitor no openMSX** com `resource/PESSOAL.DBF` (DBF II): `USE PESSOAL`, `LIST`, `DISPLAY STRUCTURE`, `GO 6` e `DISPLAY` funcionaram
 - [x] `resource/PESSOAL.DBF`: layout DBF II e leitura funcional confirmados no emulador
 - [x] `resource/ALUNOS.DBF`: DBF II com `RecLen=41`; usuário validou `USE`, `LIST`, `DISPLAY STRUCTURE`, `GO 6` e `DISPLAY` no openMSX
 - [ ] `DISPLAY` com `FOR`, `RECORD n`, listas de campos (depende de 1.3)
-- [ ] `COUNT`, `SET DELETED ON/OFF`
+- [ ] `COUNT`
+- [x] `SET DELETED ON/OFF`: default OFF; `LIST` comprovado ocultando somente o registro marcado em `CLIENTES.DBF`; `DISPLAY` e `REPLACE ALL` continuam cobertos pelo mesmo filtro no código
 
 ### 1.2 Escrita segura (Marco 2)
 - [x] Operações de arquivo na camada platform (abrir, criar, ler, escrever, seek, tamanho, renomear e apagar); teste em runtime passou no openMSX
+- [x] `APPEND` interativo DBF II: formulário simultâneo com faixas `:`; Tab/Down/Enter avançam, Up volta, Left/Right e Backspace/Delete editam, ESC cancela; C/N/L, correção após erro e vazios validados no openMSX
 - [x] `APPEND BLANK` para DBF II: grava registro de espaços, atualiza contagem/data, move `0x1A` e preenche o tail físico com `0xFF`; comparado byte a byte no scratch para `PESSOAL` (`RecLen=36`) e `ALUNOS` (`RecLen=41`)
+- [x] `INSERT [BEFORE] [BLANK]` para DBF II: insere antes/depois do ponteiro, compartilha o formulário C/N/L e mantém o ponteiro no novo registro; inclusão interativa e BLANK validados por runtime/bytes. Limites BOF/EOF e rollback ainda pendentes
+- [x] `SET CONFIRM ON/OFF`: ON (padrão) mantém o campo cheio até confirmação; OFF avança ao preencher e abre outro registro após o último campo; validado em `APPEND` e `INSERT`
 - [x] DBF III (`CLIENTES.DBF`, versão `0x03`) é recusado por `APPEND BLANK` com a mensagem de formato sem suporte; falta comparar o arquivo byte a byte para confirmar que não mudou
-- [ ] `REPLACE`, `DELETE`, `RECALL`
+- [x] `REPLACE [ALL] campo WITH expressão` (aritmética numérica básica), `DELETE` e `RECALL` para DBF II; testes manuais reportados pelo usuário
 - [x] Atualização do cabeçalho (contagem de registros e data) e marca `0x1A` validada em cópias
 - [ ] Testar rollback em erro de seek/escrita, EOF inválido, arquivo DBF III recusado sem alteração byte a byte e limite de 65.535 registros
-- [ ] `PACK` com arquivo temporário e recuperação após falha
+- [x] `PACK` gera `.TMP`, preserva o original como `.BAK` durante a troca; testes manuais reportados pelo usuário. Recuperação após falha ainda não exercitada
 - [ ] `CREATE` (definição de estrutura) e `COPY STRUCTURE`
 - [ ] Testes de integridade (interrupção, disco cheio, somente leitura)
+- [x] `SET COLON ON/OFF`: mostra/oculta os delimitadores de abertura e fechamento da faixa; padrão ON; ON/OFF validados no openMSX
 
 ### 1.3 Expressões e filtros (Marco 3)
-- [ ] Lexer e tipos de valor (C, N, L, D); numérico sem ponto flutuante (decimal fixo/BCD) — decidir
+- [~] Subconjunto decimal em `REPLACE`: `+`, `-`, `*`, `/`, parênteses e campos N; escala intermediária até 6 casas, sem ponto flutuante
+- [ ] Lexer completo e tipos de valor (C, N, L, D); definir representação geral de Numeric
 - [ ] Operadores, funções básicas, `STORE` e variáveis de memória
-- [ ] Cláusulas `FOR`/`WHILE`, `SET FILTER TO`
+- [x] `FOR` em `REPLACE ALL`: uma comparação numérica (`=`, `<>`, `!=`, `<`, `<=`, `>`, `>=`); sem `AND`/`OR`; `IDADE < 12` alterou 3/6 registros no openMSX
+- [ ] `WHILE`, `SET FILTER TO`
 - [ ] `LOCATE` / `CONTINUE`, `COUNT`, `SUM`, `AVERAGE`
 - [ ] Substituir a tabela de comandos por tokens/lexer (ver SPEC 6.6)
 
@@ -116,7 +128,7 @@ Matriz de conformidade e evidências: [DBASE_II_MSX_COMPATIBILITY.md](DBASE_II_M
 | `project/console.c/.h` | tela 80x24, rolagem, teclado, edição de linha |
 | `project/prompt.c/.h` | laço do prompt `.` |
 | `project/commands.c/.h` | tabela e execução de comandos (transitória até o lexer) |
-| `project/dbf.c/.h` | engine DBF II/III de leitura e `APPEND BLANK` DBF II (sem UI) |
+| `project/dbf.c/.h` | engine DBF II/III de leitura e mutações DBF II (`APPEND BLANK`, `REPLACE`, `DELETE`, `RECALL`, `PACK`; sem UI) |
 | `project/platform.c/.h` | MSX-DOS, Memory Mapper, arquivos |
 | `project/project_config.js` | módulos do projeto, bibliotecas, `DiskFiles` |
 | `project/msxgl_config.h` | opções do MSXgl |
@@ -142,7 +154,24 @@ Regra: nova funcionalidade de dados entra em módulo próprio sem depender de UI
 - 2026-10-27: usuário validou `USE PESSOAL`, `LIST`, `DISPLAY STRUCTURE`, `GO 6` e `DISPLAY` com DBF II no openMSX. Probe runtime dos wrappers passou; `PFile_Read` normaliza `DOS_ERR_EOF` para zero.
 - 2026-10-27: o dBASE II original foi executado numa cópia scratch. `APPEND BLANK` mudou contagem 6→7, data para `10/27/26`, substituiu o EOF em `0x2E1` por 36 espaços, gravou `0x1A` em `0x305` e deixou 250 bytes `0xFF` até o tamanho físico de 1024.
 - 2026-10-27: `APPEND BLANK` do projeto validado byte a byte em cópias de `PESSOAL` (`RecLen=36`) e `ALUNOS` (`RecLen=41`); registros anteriores permaneceram idênticos, novo EOF e padding conferidos.
-- Próximo passo: testar rollback e limites de escrita, provar por comparação que DBF III recusado não foi alterado e implementar `REPLACE`, `DELETE` e `RECALL`; `PACK` fica depois dos testes de integridade.
+- 2026-10-28: implementados `REPLACE campo WITH valor`, `DELETE`, `RECALL` e `PACK` DBF II. O build passou; comparação byte a byte e testes de rollback/recuperação dessas operações ainda pendentes.
+- 2026-10-28: corrigido o README: detecção de MSX1 não está implementada; o alvo de build MSX2 não equivale a uma detecção em runtime.
+- 2026-10-28: prompt tem histórico de 8 comandos, TAB cíclico por prefixo e edição com setas esquerda/direita; descer além do comando mais recente limpa a linha. Usuário confirmou o teste desses comportamentos.
+- 2026-10-28: `REPLACE [ALL] campo WITH expressão` aceita aritmética decimal simples e referências a campos numéricos; usuário confirmou o teste. `FOR` numérico foi adicionado depois; `WHILE`, funções e gramática xBase completa continuam pendentes.
+- 2026-10-28: adicionado `FOR` numérico em `REPLACE ALL`; build passou. A condição suporta uma comparação de expressões Numeric por comando, sem `AND`/`OR`; falta validar no openMSX.
+- 2026-10-28: implementado `SET DELETED ON/OFF` (default OFF); filtra `LIST`, `DISPLAY` atual e as duas passagens de `REPLACE ALL`. `GO`/`SKIP` seguem físicos; build passou.
+- 2026-10-28: implementado `DISPLAY FILES` pela camada platform; sem padrão lista contagem/data DBF; `LIKE padrao` lista literalmente nome/tamanho/data DOS. Não exige `USE`; build passou, teste runtime pendente.
+- 2026-10-28: `APPEND` sem argumento abre formulário DBF II C/N/L, valida todas as entradas e então grava; `APPEND BLANK` permanece. `SET COLON ON/OFF` controla o delimitador, padrão ON. Build passou, teste runtime pendente.
+- 2026-10-28: usuário informou que os testes anteriores de mutação e `PACK` funcionaram; sem resultados detalhados registrados por fixture/comando.
+- 2026-10-29: `APPEND` validado no openMSX em cópia nova de `ALUNOS.DBF` (6 registros iniciais): valor N/C válido, entrada Numeric inválida com reentrada, formulário vazio e `APPEND BLANK`; `LIST` terminou com 9 registros. Campo L ainda não testado.
+- 2026-10-29: `SET COLON ON/OFF` e os comandos `SET DELETED ON/OFF` validados no openMSX. `SET COLON OFF` oculta os dois delimitadores. Corrigido o parser: `OFF` tem três caracteres, mas os dois comandos aceitavam apenas modos de dois caracteres. O efeito de `SET DELETED` em registros excluídos ainda precisa de teste.
+- 2026-10-29: `APPEND` passou a mostrar os campos juntos, com faixas delimitadas, navegação e edição no lugar. No openMSX, Up permitiu alterar `SEXO` sem perder `SERIE`; cancelar não gravou e o formulário vazio criou um registro em branco. Corrigida também a sobreposição dos terminadores entre buffers de campos.
+- 2026-10-29: fechados os testes de `APPEND L`, `SET DELETED`, `DISPLAY FILES [LIKE]` e `REPLACE ALL ... FOR`; capturas guardadas em `docs/screenshots/`.
+- 2026-10-29: marco `3.0 Grep`; release local empacotado com `.COM`, `.DSK` e notas. Publicacao externa/tag Git nao realizada.
+- 2026-10-29: preparado `3.1 Grep`; `HELP` sem argumentos usa resumo local, `Help_Init` inicializa o índice e `DB8SEMSG.TXT` é opcional no build. O `.COM` e o DSK local compilam; o release público não inclui o DSK nem o arquivo original.
+- 2026-10-29: `HELP` TXT com resumo local confirmado em cópia temporária do DSK. Abertura de tópicos externos e validação visual final do viewer SCREEN continuam pendentes.
+- 2026-10-29: `INSERT [BEFORE] [BLANK]` implementado e validado em cópias DBF II; duas inclusões vazias foram ordenadas antes/depois do ponteiro, e `INSERT BEFORE` interativo gravou os dados no local correto sem deixar `.BAK`.
+- Próximo passo: validar limites BOF/EOF, limite de 65.535 registros e rollback do `INSERT`; depois iniciar `WHILE`/`SET FILTER TO` e os índices NDX.
 - 2026-10-27: registrada a intenção de uma suíte integrada com dBASE, WordStar 3.3 ou 4.0 e SuperCalc 2 ou 3, mantendo os aplicativos independentes e integrando-os por menu e troca de arquivos; versões e formatos ainda precisam ser avaliados.
 
 ## 10. Backlog e ideias (adicionar aqui conforme surgirem)

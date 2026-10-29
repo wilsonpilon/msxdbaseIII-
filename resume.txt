@@ -1,5 +1,5 @@
 MSX dBASE III- / dBASE II+  -  RESUMO DO PROJETO E DO DIA
-Ultima atualizacao: 2026-10-27
+Ultima atualizacao: 2026-10-29
 
 === O PROJETO ===
 Ambiente xBase nativo para MSX2/2+/turbo R: nucleo compativel com dBASE II, recursos
@@ -17,13 +17,15 @@ incorporado ao SPEC (secao 6) e fica so como historico.
 5. Teste basico no prompt: ver / use clientes / list / display structure / go 3 / display / skip -1 / go bottom / quit
 
 === ESTADO ATUAL ===
-Fase 0 (infraestrutura): CONCLUIDA.
-Leitor DBF II MSX (0x02) e DBF III (0x03/0x83); APPEND BLANK grava DBF II.
-Versao preparada: 2.0 Fork (tag 2.0). O comando VER exibe a versao do executavel;
-builds bem-sucedidos incrementam Y automaticamente; use .\build.ps1 -KeepVersion
-durante testes repetidos.
-Codigo em project/: main.c, console.c, prompt.c, commands.c, dbf.c, platform.c (+ .h),
-data/CLIENTES.DBF. Modulos e libs registrados em project/project_config.js.
+Release preparado: 3.1 Grep. Codigo em `project/`; build C/SDCC/MSXgl para MSX-DOS 2.
+DBF II (`0x02`) tem leitura e mutacoes basicas; DBF III continua somente leitura.
+`INSERT [BEFORE] [BLANK]`, `SET CONFIRM`, `APPEND`, filtros e `DISPLAY FILES` foram
+testados em copias no openMSX. O build completo atualiza `project/emul/dsk/DOS2_msxdbase.dsk`.
+`HELP` sem parametros mostra resumo local sem abrir arquivo; isso evita o bloqueio em
+`PFile_OpenRead`. `Help_Init` limpa explicitamente o indice. `DB8SEMSG.TXT` e opcional:
+sem ele, os topicos detalhados nao estao disponiveis. O arquivo original nao e publicado.
+O viewer SCREEN esta implementado, mas falta validar visualmente a versao final.
+O worktree continha recursos comerciais locais nao publicados; ver `.gitignore`.
 
 === FEITO HOJE (2026-10-27) ===
 - Corrigido congelamento inicial (ROM principal nao existe sob MSX-DOS): removida leitura
@@ -42,26 +44,60 @@ data/CLIENTES.DBF. Modulos e libs registrados em project/project_config.js.
 - Teste negativo: `APPEND BLANK` em `CLIENTES.DBF` (DBF III, versão `0x03`) retorna formato/mutação sem suporte. Falta comparar o arquivo antes/depois para confirmar ausência de alterações.
 - `resource/PESSOAL.DBF`: assinatura 0x02, cabecalho de 521 bytes, seis registros de 36 bytes; leitura validada no openMSX. Duas amostras DBF II tem o marcador 0x1A no offset 0x2E1, mas padding diferente: no DSK original, 286 x 0xFF; em resource/PESSOAL.DBF, 143 x 0x00 e 143 x 0xFF. Nao generalizar o padding.
 - `resource/ALUNOS.DBF`: DBF II 0x02, cabecalho de 521 bytes, seis registros de 41 bytes e campos N(5), C(30), N(3), C(1), N(1); usuario validou USE, LIST, DISPLAY STRUCTURE, GO 6 e DISPLAY no openMSX.
-- Console agora usa fonte ASCII embutida do MSXgl; removido o `VRAM.DAT` incompatível com a pontuacao das strings. Cursor usa underscore ASCII alinhado à base; falta conferir no openMSX.
+- Console usa fonte ASCII embutida do MSXgl; removido o `VRAM.DAT` incompatível com a pontuacao das strings. Cursor underscore alinhado e console 80x24 vistos nas capturas do openMSX.
 - Banco de teste CLIENTES.DBF (5 registros, 1 excluido) + script gerador.
 - Documentacao reorganizada: SPEC (completo), OUTLINE (progresso), resume.txt.
 - Console reescrito: VDP direto + copia da tela em RAM (rolagem rapida) e teclado pela BIOS
-  (CHSNS/CHGET via CALSLT) para eliminar o cursor fixo; compilou, FALTA VALIDAR no emulador.
+  (CHSNS/CHGET via CALSLT) para eliminar o cursor fixo; validado no openMSX.
 - Novo comando SET COLOR TO W+/B (estilo dBASE) ou SET COLOR TO 15,4 (paleta MSX); alias COLOR.
 
-=== PROXIMOS PASSOS (proxima sessao) ===
-1. Fazer `gh auth login` e criar a página GitHub Release `2.0` anexando os arquivos em `release/2.0/`.
-2. Verificar byte a byte que `CLIENTES.DBF` não muda quando DBF III é recusado; testar EOF inválido, limite de 65.535 registros e rollback após falha de seek/escrita.
-3. Implementar `REPLACE`, `DELETE` e `RECALL`; testar byte a byte em cópias de `PESSOAL` e `ALUNOS`.
-4. Implementar `PACK` seguro com arquivo temporario e comparacao byte a byte.
-5. Completar o núcleo MSX: comandos e NDX documentados, expressões e modo programável conforme os livros.
-6. Depois de estabilizar o núcleo, avaliar o editor interno inspirado no TED e a integração da suite com WordStar 3.3/4.0 e SuperCalc 2/3.
+=== FEITO HOJE (2026-10-28) ===
+- Implementados `REPLACE campo WITH valor`, `DELETE`, `RECALL` e `PACK` para DBF II; `PACK` usa arquivo `.TMP` e backup `.BAK` durante a troca.
+- `.\build.ps1 -KeepVersion` compilou e gerou o `.COM` e o `.DSK`; isso ainda nao valida as mutacoes no openMSX.
+- README corrigido: deteccao de MSX1 nao existe no codigo atual; o alvo MSX2 do build nao garante aviso em runtime.
+- Prompt com historico de oito comandos (setas Up/Down) e completamento ciclico por TAB testado pelo usuario.
+- Setas Left/Right movem o cursor na linha; insercao no ponto atual, Backspace/Delete e Down alem do comando mais recente (limpa a linha) implementados e testados pelo usuario.
+- `REPLACE [ALL] campo WITH expressao` com aritmetica decimal basica, parenteses e referencias a campos N testado pelo usuario; sintaxe completa xBase ainda pendente.
+- Usuario informou que os testes de mutacao e `PACK` tambem funcionaram; casos detalhados nao foram especificados.
+- `REPLACE ALL` aceita `FOR` com uma comparação numerica (`=`, `<>`, `!=`, `<`, `<=`, `>`, `>=`); runtime validado com `IDADE < 12`, sem `AND`/`OR`.
+- `SET DELETED ON/OFF` (default OFF) filtra `LIST`, `DISPLAY` atual e `REPLACE ALL`; o filtro foi validado em banco com registro excluido. `GO`/`SKIP` continuam fisicos.
+- `DISPLAY FILES` lista DBFs com contagem/data; `LIKE` usa padroes literais (`*.*`, `P*`, `*.FRM`); runtime validado com e sem correspondencias.
+- `APPEND` abre formulario simultaneo C/N/L, valida antes de gravar e mantem espacos em campos vazios; `APPEND BLANK` permanece. `SET COLON ON/OFF` mostra/oculta os delimitadores das duas extremidades.
+
+=== FEITO HOJE (2026-10-29) ===
+- `APPEND` validado no openMSX em uma cópia nova do DSK e de `ALUNOS.DBF` (6 registros iniciais): gravou `7 / TESTE / 18 / M / 1`, repetiu o campo Numeric após `XX`, aceitou formulário vazio e `APPEND BLANK`; `LIST` terminou com 9 registros. O disco original não foi alterado.
+- `SET COLON OFF` remove os delimitadores `:` de abertura e fechamento; `SET DELETED ON/OFF` e o efeito do filtro em registros excluidos foram validados.
+- Corrigida a validacao de `OFF` (tres caracteres) em `SET COLON` e `SET DELETED`; `APPEND L` tambem foi testado em DBF II temporario.
+- `APPEND` agora mostra os campos na mesma tela, com `:` delimitando as faixas e navegação por Up/Down/Tab/Enter; Left/Right e Backspace/Delete editam, ESC cancela. No openMSX, a edição de `SEXO` após voltar de `SERIE` preservou o valor de `SERIE`; cancelar manteve 7 registros e um formulário vazio acrescentou o registro 8 em branco.
+- O build completo atualizou o `.COM` de execução e o `.DSK` padrão. O teste de `APPEND` foi feito em cópias temporárias.
+- `APPEND L` testado em DBF II temporário: `X` foi recusado; `Y` foi normalizado para `T` e gravado.
+- `SET DELETED ON` ocultou somente o registro excluído de `CLIENTES`; OFF voltou a mostrá-lo. `DISPLAY FILES`, `LIKE *.*` e `LIKE *.FRM` foram testados com correspondências e sem resultados.
+- `REPLACE ALL IDADE WITH IDADE + 5 FOR IDADE < 12` atualizou 3 de 6 registros; os demais permaneceram intactos.
+- `INSERT [BEFORE] [BLANK]` implementado para DBF II: padrao insere depois do atual, `BEFORE` antes, `BLANK` grava espacos e o ponteiro fica no novo registro. Testes em copia: insercao padrao, antes e formulario interativo antes; contador/ordem conferidos por extracao do DSK e nenhum `.BAK` residual.
+- `SET CONFIRM ON/OFF`: ON permaneceu no campo cheio ate Enter; OFF avancou C/N e ao preencher o ultimo campo gravou e abriu outro formulario. Validado em APPEND e INSERT BEFORE no openMSX.
+- Ajuda online: `HELP` sem argumentos mostra o resumo local; `HELP DBASE` e `HELP <COMANDO>` dependem do `DB8SEMSG.TXT` externo. `SET HELP TXT|SCREEN`; SCREEN exige `SET MSX ON`. O resumo TXT foi confirmado em DSK temporario. Abertura dos topicos externos e validacao final de SCREEN pendentes.
+- `Help_Init` inicializa flags/contadores BSS; tabela limitada a 160 topicos. `DB8SEMSG.TXT` e opcional no `DiskFiles` e nao e incluido no repositorio/release publico.
+- Build completo 3.1 passou e atualizou COM/DSK local. Publicacao 3.1 usa o COM sem anexar o DSK que carrega recursos originais.
+- `SET MSX` hoje controla cores e ajuda SCREEN; o gate das demais melhorias visuais/de entrada fica para as features seguintes.
+- Screenshots de APPEND, erro Logical, FOR, SET DELETED e DISPLAY FILES salvos em `docs/screenshots/` e incorporados ao README.
+- Release local `3.0 Grep` compilado e empacotado em `release/3.0/` e `release/msxdbase-3.0-downloads.zip`. Nenhuma tag ou publicacao GitHub foi criada.
+
+=== PROXIMOS PASSOS ===
+1. Retomar em `main`, tag/release GitHub `3.1 Grep`; `gh` estava autenticado como `wilsonpilon`.
+2. Testar `HELP DBASE` e `HELP <COMANDO>` com arquivo `DB8SEMSG.TXT` licenciado numa copia temporaria.
+3. Validar o viewer `SET MSX ON` + `SET HELP SCREEN` no DSK final: quadro, busca, rolagem, cores e saida Esc.
+4. Testar `INSERT` em BOF/EOF, limite de 65.535 registros e rollback sob falhas de seek/escrita.
+5. Depois, iniciar `WHILE`/`SET FILTER TO` e planejar indices NDX.
+
+=== PUBLICACAO ===
+Release 3.1: anexar somente `msxdbase-3.1.com`. Nao publicar DSK, PDFs, discos ou outros
+arquivos comerciais em `resource/`; eles permanecem locais e ignorados. O DSK local pode
+incluir `DB8SEMSG.TXT` se o usuario tiver uma copia licenciada em `resource/dbaseII/files/`.
 
 === DIRECAO FUTURA: EDITOR INTERNO ===
 - Decidido em 2026-10-27: criar futuramente um editor de tela cheia integrado ao dBASE para arquivos .PRG, usando o TED de msx2026/ como referencia e fonte autorizada para adaptacao.
 - Nao iniciar TED.COM como processo externo nem incorporar seu codigo como bloco monolitico. Separar buffer/edicao, UI/teclado, arquivos via platform e integracao com comandos/menus.
 - O editor e os menus avancados ficam depois da validacao e estabilizacao do nucleo DBF. WordStar pode permanecer opcional e independente na suite.
-- Proximo passo logico: cobrir rollback e limites de escrita, depois implementar `REPLACE`, `DELETE` e `RECALL`. A regra de `APPEND BLANK` no original já foi observada e reproduzida.
 
 === DIRECAO FUTURA: SUITE INTEGRADA ===
 - Intencao registrada em 2026-10-27: reunir dBASE, WordStar 3.3 ou 4.0 e SuperCalc 2 ou 3 em uma suite para MSX2/MSX-DOS 2.

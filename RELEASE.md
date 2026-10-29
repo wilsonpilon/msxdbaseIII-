@@ -1,5 +1,44 @@
 # Releases
 
+## 3.1 Grep: inserção, formulários e ajuda sem bloqueio
+
+Release: `3.1`, codinome `Grep`, 2026-10-29.
+
+- `INSERT [BEFORE] [BLANK]` posiciona registros relativamente ao ponteiro e reutiliza o formulário C/N/L.
+- `SET CONFIRM ON/OFF` controla avanço automático dos formulários.
+- `HELP` sem argumentos exibe o resumo local sem abrir um arquivo externo; o índice HELP é inicializado explicitamente e limita a tabela a 160 tópicos.
+- A moldura SCREEN usa cantos corrigidos, cor estável e redesenho incremental. A validação visual final dessa janela ainda está pendente.
+- `DB8SEMSG.TXT` é opcional no build e não é distribuído. Sem ele, o resumo local funciona; os verbetes originais não.
+
+Validação: build SDCC/MSX-DOS 2 passou. `HELP` TXT foi executado em cópia temporária do DSK e exibiu o resumo local. Operações destrutivas foram testadas em cópias. O DSK padrão contém recursos locais que não fazem parte do release público.
+
+Artefatos publicados: executável `.COM`. O DSK não é anexado porque contém dados originais de terceiros. O usuário pode gerar sua própria imagem com `build.ps1` e adicionar uma cópia licenciada de `DB8SEMSG.TXT` localmente.
+
+### Snapshot local 3.0
+
+Veja `release/3.0/`. Esse pacote é histórico e não foi publicado como GitHub Release.
+
+## 3.0 Grep: formulario, filtros e consulta de arquivos
+
+Titulo do release: `Grep: formulario, filtros e consulta de arquivos`.
+
+- `APPEND` apresenta todos os campos C/N/L na mesma tela, com navegacao, edicao no lugar, validacao, cancelamento e gravacao somente depois da confirmacao.
+- `SET COLON ON/OFF` controla os delimitadores de abertura e fechamento das faixas do formulario.
+- `SET DELETED ON/OFF` testado em DBF III com um registro excluido; `LIST` omite somente esse registro quando ON.
+- `DISPLAY FILES`, `DISPLAY FILES LIKE *.*` e `DISPLAY FILES LIKE *.FRM` testados com correspondencias e sem resultados.
+- `REPLACE ALL IDADE WITH IDADE + 5 FOR IDADE < 12` alterou 3 de 6 registros em DBF II.
+- `APPEND L` testado numa copia temporaria de DBF II: entrada invalida `X` foi rejeitada e `Y` gravada como `T`.
+- Build completo MSX-DOS 2 e imagens/capturas do openMSX incluidos no pacote local.
+
+Limitacoes conhecidas: mutacoes DBF III nao sao suportadas; `FOR` aceita uma comparacao numerica, sem `AND`/`OR`; `WHILE`, `SET FILTER`, NDX e recuperacao de falhas de escrita continuam pendentes. A fixture Logical usada no teste foi temporaria e nao foi adicionada ao disco padrao.
+
+Downloads locais:
+- [Executavel MSX-DOS 2](release/3.0/msxdbase-3.0.com)
+- [Imagem de disco openMSX](release/3.0/DOS2_msxdbase-3.0.dsk)
+- [Pacote ZIP](release/msxdbase-3.0-downloads.zip)
+
+Tag sugerida: `3.0` (nao criada nem publicada).
+
 ## 2.0 Fork: APPEND BLANK para DBF II MSX
 
 Titulo do release GitHub: `Fork: APPEND BLANK para DBF II MSX`.

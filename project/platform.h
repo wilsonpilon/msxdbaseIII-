@@ -26,6 +26,15 @@ typedef struct PlatformDate
 	u8 Day;
 } PlatformDate;
 
+typedef struct PlatformFileEntry
+{
+	c8 Name[13];
+	u32 Size;
+	u16 Year;
+	u8 Month;
+	u8 Day;
+} PlatformFileEntry;
+
 extern PlatformInfo g_Platform;
 
 // Detecta MSX-DOS e Memory Mapper. Chamar uma vez na inicializacao.
@@ -68,5 +77,9 @@ u32 PFile_Size(u8 file);
 // Renomeia ou remove um arquivo. Retorna FALSE em caso de erro.
 bool PFile_Rename(const c8* path, const c8* newPath);
 bool PFile_Delete(const c8* path);
+
+// Itera entradas que correspondem a um padrao DOS (ex.: "*.DBF").
+bool PFile_FindFirst(const c8* pattern, PlatformFileEntry* entry);
+bool PFile_FindNext(PlatformFileEntry* entry);
 
 #endif

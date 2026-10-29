@@ -17,7 +17,7 @@ void Prompt_Run(void)
 	for (;;)
 	{
 		Console_PutChar('.');                 // prompt classico do dBASE
-		Console_ReadLine(s_Line, LINE_MAX);
+		Console_ReadLine(s_Line, LINE_MAX, Command_Complete);
 		if (!Command_Execute(s_Line))
 			break;
 	}

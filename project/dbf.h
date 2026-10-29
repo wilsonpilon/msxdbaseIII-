@@ -66,6 +66,21 @@ u8 Dbf_Goto(Dbf* db, u32 n);
 // Acrescenta um registro em branco em DBF II MSX.
 u8 Dbf_AppendBlank(Dbf* db, const c8* path);
 
+// Acrescenta um registro preparado em DBF II MSX.
+u8 Dbf_AppendRecord(Dbf* db, const c8* path, const u8* record);
+
+// Insere um registro preparado em uma posicao absoluta (base 1) em DBF II MSX.
+u8 Dbf_InsertRecord(Dbf* db, const c8* path, u32 position, const u8* record);
+
+// Atualiza um campo do registro atual em DBF II MSX.
+u8 Dbf_ReplaceField(Dbf* db, const c8* path, u8 fieldIndex, const u8* value, u8 valueLen);
+
+// Marca ou recupera o registro atual em DBF II MSX.
+u8 Dbf_SetDeleted(Dbf* db, const c8* path, bool deleted);
+
+// Remove fisicamente registros excluidos usando um arquivo temporario.
+u8 Dbf_Pack(Dbf* db, const c8* path);
+
 // Move n registros (pode ser negativo). Passar do fim deixa Eof, antes do inicio Bof
 u8 Dbf_Skip(Dbf* db, i32 n);
 

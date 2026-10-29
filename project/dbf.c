@@ -17,6 +17,8 @@
 #define DBF_VER_III      0x03
 #define DBF_VER_III_MEMO 0x83
 #define DBF_HDR_END      0x0D
+#define DBF_PATH_MAX     80
+#define DBF_COPY_SIZE    32
 
 static u16 Rd16(const u8* p)
 {
@@ -196,7 +198,7 @@ u8 Dbf_Goto(Dbf* db, u32 n)
 	return DBF_OK;
 }
 
-u8 Dbf_AppendBlank(Dbf* db, const c8* path)
+static u8 AppendRecord(Dbf* db, const c8* path, const u8* record)
 {
 	if (!Dbf_IsOpen(db))
 		return DBF_ERR_OPEN;
@@ -222,15 +224,12 @@ u8 Dbf_AppendBlank(Dbf* db, const c8* path)
 
 	PlatformDate date;
 	Platform_GetDate(&date);
-	u8 blankRecord[DBF_MAX_RECLEN];
 	u8 padding[16];
-	for (u16 i = 0; i < db->RecLen; i++)
-		blankRecord[i] = ' ';
 	for (u8 i = 0; i < sizeof(padding); i++)
 		padding[i] = 0xFF;
 
 	if (!PFile_Seek(writeHandle, recordOffset)
-		|| (PFile_Write(writeHandle, blankRecord, db->RecLen) != db->RecLen))
+		|| (PFile_Write(writeHandle, record, db->RecLen) != db->RecLen))
 		goto restore_eof;
 	if (PFile_Write(writeHandle, "\x1A", 1) != 1)
 		goto restore_eof;
@@ -276,7 +275,7 @@ u8 Dbf_AppendBlank(Dbf* db, const c8* path)
 	db->LastUpdate[1] = date.Month;
 	db->LastUpdate[2] = date.Day;
 	for (u16 i = 0; i < db->RecLen; i++)
-		db->Buffer[i] = blankRecord[i];
+		db->Buffer[i] = record[i];
 	db->RecNo = newCount;
 	db->Bof = FALSE;
 	db->Eof = FALSE;
@@ -287,6 +286,438 @@ restore_eof:
 		PFile_Write(writeHandle, &oldEof, 1);
 	PFile_Close(writeHandle);
 	return DBF_ERR_WRITE;
+}
+
+u8 Dbf_AppendRecord(Dbf* db, const c8* path, const u8* record)
+{
+	return AppendRecord(db, path, record);
+}
+
+u8 Dbf_AppendBlank(Dbf* db, const c8* path)
+{
+	if (!Dbf_IsOpen(db))
+		return DBF_ERR_OPEN;
+	if (db->RecLen > DBF_MAX_RECLEN)
+		return DBF_ERR_LIMITS;
+	u8 record[DBF_MAX_RECLEN];
+	for (u16 i = 0; i < db->RecLen; i++)
+		record[i] = ' ';
+	return AppendRecord(db, path, record);
+}
+
+static bool IsCurrentRecord(const Dbf* db)
+{
+	return Dbf_IsOpen(db) && !db->Bof && !db->Eof
+		&& (db->RecNo >= 1) && (db->RecNo <= db->RecCount);
+}
+
+u8 Dbf_ReplaceField(Dbf* db, const c8* path, u8 fieldIndex, const u8* value, u8 valueLen)
+{
+	if (!IsCurrentRecord(db))
+		return DBF_ERR_RANGE;
+	if ((db->Version != DBF_VER_II) || (fieldIndex >= db->FieldCount))
+		return DBF_ERR_WRITE;
+
+	DbfField* field = &db->Fields[fieldIndex];
+	if ((field->Type != 'C') && (field->Type != 'N') && (field->Type != 'L'))
+		return DBF_ERR_WRITE;
+	if ((valueLen == 0) || (valueLen > field->Length))
+		return DBF_ERR_RANGE;
+
+	u8 replacement[DBF_MAX_RECLEN];
+	for (u8 i = 0; i < field->Length; i++)
+		replacement[i] = ' ';
+
+	if (field->Type == 'L')
+	{
+		if (valueLen != 1)
+			return DBF_ERR_FORMAT;
+		c8 c = (c8)value[0];
+		if ((c >= 'a') && (c <= 'z'))
+			c -= 'a' - 'A';
+		if ((c != 'T') && (c != 'Y') && (c != 'F') && (c != 'N'))
+			return DBF_ERR_FORMAT;
+		replacement[0] = ((c == 'T') || (c == 'Y')) ? 'T' : 'F';
+	}
+	else if (field->Type == 'N')
+	{
+		bool hasDigit = FALSE;
+		bool hasDecimal = FALSE;
+		u8 decimals = 0;
+		for (u8 i = 0; i < valueLen; i++)
+		{
+			c8 c = (c8)value[i];
+			if ((c >= '0') && (c <= '9'))
+			{
+				hasDigit = TRUE;
+				if (hasDecimal)
+					decimals++;
+			}
+			else if ((c == '-') && (i == 0))
+				continue;
+			else if ((c == '.') && !hasDecimal)
+				hasDecimal = TRUE;
+			else
+				return DBF_ERR_FORMAT;
+		}
+		if (!hasDigit || (decimals > field->Decimals))
+			return DBF_ERR_FORMAT;
+		for (u8 i = 0; i < valueLen; i++)
+			replacement[field->Length - valueLen + i] = value[i];
+	}
+	else
+	{
+		for (u8 i = 0; i < valueLen; i++)
+			replacement[i] = value[i];
+	}
+
+	u8 oldValue[DBF_MAX_RECLEN];
+	for (u8 i = 0; i < field->Length; i++)
+	{
+		oldValue[i] = db->Buffer[field->Offset + i];
+		db->Buffer[field->Offset + i] = replacement[i];
+	}
+
+	u8 handle = PFile_OpenReadWrite(path);
+	u32 offset = (u32)db->HeaderLen + (db->RecNo - 1) * (u32)db->RecLen + field->Offset;
+	bool written = (handle != PFILE_INVALID) && PFile_Seek(handle, offset)
+		&& (PFile_Write(handle, replacement, field->Length) == field->Length);
+	if (!written)
+	{
+		if (handle != PFILE_INVALID)
+		{
+			if (PFile_Seek(handle, offset))
+				PFile_Write(handle, oldValue, field->Length);
+			PFile_Close(handle);
+		}
+		for (u8 i = 0; i < field->Length; i++)
+			db->Buffer[field->Offset + i] = oldValue[i];
+		return DBF_ERR_WRITE;
+	}
+	PFile_Close(handle);
+	return DBF_OK;
+}
+
+u8 Dbf_SetDeleted(Dbf* db, const c8* path, bool deleted)
+{
+	if (!IsCurrentRecord(db))
+		return DBF_ERR_RANGE;
+	if (db->Version != DBF_VER_II)
+		return DBF_ERR_WRITE;
+
+	u8 oldMark = db->Buffer[0];
+	u8 newMark = deleted ? '*' : ' ';
+	if (oldMark == newMark)
+		return DBF_OK;
+
+	u32 offset = (u32)db->HeaderLen + (db->RecNo - 1) * (u32)db->RecLen;
+	u8 handle = PFile_OpenReadWrite(path);
+	bool written = (handle != PFILE_INVALID) && PFile_Seek(handle, offset)
+		&& (PFile_Write(handle, &newMark, 1) == 1);
+	if (!written)
+	{
+		if (handle != PFILE_INVALID)
+		{
+			if (PFile_Seek(handle, offset))
+				PFile_Write(handle, &oldMark, 1);
+			PFile_Close(handle);
+		}
+		return DBF_ERR_WRITE;
+	}
+	PFile_Close(handle);
+	db->Buffer[0] = newMark;
+	return DBF_OK;
+}
+
+static bool BuildSiblingPath(const c8* path, const c8* extension, c8* out)
+{
+	u8 length = 0;
+	u8 lastSeparator = 0xFF;
+	u8 lastDot = 0xFF;
+	while (path[length] && (length < DBF_PATH_MAX))
+	{
+		if ((path[length] == '/') || (path[length] == '\\'))
+			lastSeparator = length;
+		else if (path[length] == '.')
+			lastDot = length;
+		out[length] = path[length];
+		length++;
+	}
+	if (path[length] || (length == 0))
+		return FALSE;
+
+	u8 baseLength = ((lastDot != 0xFF) && ((lastSeparator == 0xFF) || (lastDot > lastSeparator)))
+		? lastDot : length;
+	u8 extLength = 0;
+	while (extension[extLength])
+		extLength++;
+	if ((u16)baseLength + extLength >= DBF_PATH_MAX)
+		return FALSE;
+	for (u8 i = 0; i < extLength; i++)
+		out[baseLength + i] = extension[i];
+	out[baseLength + extLength] = 0;
+	return TRUE;
+}
+
+static bool PathExists(const c8* path)
+{
+	u8 handle = PFile_OpenRead(path);
+	if (handle == PFILE_INVALID)
+		return FALSE;
+	PFile_Close(handle);
+	return TRUE;
+}
+
+u8 Dbf_InsertRecord(Dbf* db, const c8* path, u32 position, const u8* record)
+{
+	if (!Dbf_IsOpen(db))
+		return DBF_ERR_OPEN;
+	if (db->Version != DBF_VER_II)
+		return DBF_ERR_WRITE;
+	if (db->RecCount >= 0xFFFFUL)
+		return DBF_ERR_LIMITS;
+	if ((position < 1) || (position > db->RecCount + 1))
+		return DBF_ERR_RANGE;
+	if (db->RecLen > DBF_MAX_RECLEN)
+		return DBF_ERR_LIMITS;
+	u32 previousRecNo = db->RecNo;
+	bool previousBof = db->Bof;
+	bool previousEof = db->Eof;
+
+	c8 tempPath[DBF_PATH_MAX];
+	c8 backupPath[DBF_PATH_MAX];
+	if (!BuildSiblingPath(path, ".TMP", tempPath)
+		|| !BuildSiblingPath(path, ".BAK", backupPath))
+		return DBF_ERR_RANGE;
+	if (PathExists(tempPath) || PathExists(backupPath))
+		return DBF_ERR_WRITE;
+
+	u32 oldEofOffset = (u32)db->HeaderLen + db->RecCount * (u32)db->RecLen;
+	u32 oldSize = PFile_Size(db->Handle);
+	u8 oldEof;
+	if ((oldSize <= oldEofOffset)
+		|| !PFile_Seek(db->Handle, oldEofOffset)
+		|| (PFile_Read(db->Handle, &oldEof, 1) != 1)
+		|| (oldEof != 0x1A))
+		return DBF_ERR_FORMAT;
+
+	u16 newCount = (u16)(db->RecCount + 1);
+	u32 newEofOffset = (u32)db->HeaderLen + (u32)newCount * db->RecLen;
+	u32 newSize = (oldSize > newEofOffset) ? oldSize : newEofOffset + 1;
+	u8 tempHandle = PFile_Create(tempPath);
+	if (tempHandle == PFILE_INVALID)
+		return DBF_ERR_WRITE;
+
+	u8 copyBuffer[DBF_COPY_SIZE];
+	u8 recordBuffer[DBF_MAX_RECLEN];
+	u8 padding[16];
+	for (u8 i = 0; i < sizeof(padding); i++)
+		padding[i] = 0xFF;
+
+	bool ok = PFile_Seek(db->Handle, 0);
+	u16 headerRemaining = db->HeaderLen;
+	while (ok && headerRemaining)
+	{
+		u16 chunk = (headerRemaining > sizeof(copyBuffer)) ? sizeof(copyBuffer) : headerRemaining;
+		ok = (PFile_Read(db->Handle, copyBuffer, chunk) == chunk)
+			&& (PFile_Write(tempHandle, copyBuffer, chunk) == chunk);
+		headerRemaining -= chunk;
+	}
+
+	PlatformDate date;
+	Platform_GetDate(&date);
+	u8 headerUpdate[5];
+	headerUpdate[0] = (u8)newCount;
+	headerUpdate[1] = (u8)(newCount >> 8);
+	headerUpdate[2] = date.Month;
+	headerUpdate[3] = date.Day;
+	headerUpdate[4] = date.Year;
+	if (ok)
+		ok = PFile_Seek(tempHandle, 1)
+			&& (PFile_Write(tempHandle, headerUpdate, sizeof(headerUpdate)) == sizeof(headerUpdate))
+			&& PFile_Seek(tempHandle, db->HeaderLen);
+
+	for (u32 newRecordNo = 1; ok && (newRecordNo <= newCount); newRecordNo++)
+	{
+		if (newRecordNo == position)
+			ok = PFile_Write(tempHandle, record, db->RecLen) == db->RecLen;
+		else
+		{
+			u32 oldRecordNo = (newRecordNo < position) ? newRecordNo : newRecordNo - 1;
+			u32 oldRecordOffset = (u32)db->HeaderLen + (oldRecordNo - 1) * (u32)db->RecLen;
+			ok = PFile_Seek(db->Handle, oldRecordOffset)
+				&& (PFile_Read(db->Handle, recordBuffer, db->RecLen) == db->RecLen)
+				&& (PFile_Write(tempHandle, recordBuffer, db->RecLen) == db->RecLen);
+		}
+	}
+
+	u8 eof = 0x1A;
+	if (ok)
+		ok = PFile_Write(tempHandle, &eof, 1) == 1;
+	u32 paddingOffset = newEofOffset + 1;
+	while (ok && (paddingOffset < newSize))
+	{
+		u32 remaining = newSize - paddingOffset;
+		u16 chunk = (remaining > sizeof(padding)) ? sizeof(padding) : (u16)remaining;
+		ok = PFile_Write(tempHandle, padding, chunk) == chunk;
+		paddingOffset += chunk;
+	}
+
+	PFile_Close(tempHandle);
+	if (!ok)
+	{
+		PFile_Delete(tempPath);
+		return DBF_ERR_WRITE;
+	}
+
+	PFile_Close(db->Handle);
+	db->Handle = PFILE_INVALID;
+	if (!PFile_Rename(path, backupPath))
+	{
+		PFile_Delete(tempPath);
+		Dbf_Open(db, path);
+		return DBF_ERR_WRITE;
+	}
+	if (!PFile_Rename(tempPath, path))
+	{
+		PFile_Rename(backupPath, path);
+		PFile_Delete(tempPath);
+		Dbf_Open(db, path);
+		return DBF_ERR_WRITE;
+	}
+	if (!PFile_Delete(backupPath))
+	{
+		bool restored = PFile_Delete(path) && PFile_Rename(backupPath, path);
+		if (restored && (Dbf_Open(db, path) == DBF_OK))
+		{
+			if (!previousBof && !previousEof && (previousRecNo >= 1)
+				&& (previousRecNo <= db->RecCount))
+				Dbf_Goto(db, previousRecNo);
+			else
+			{
+				db->RecNo = previousRecNo;
+				db->Bof = previousBof;
+				db->Eof = previousEof;
+			}
+		}
+		return DBF_ERR_WRITE;
+	}
+	if (Dbf_Open(db, path) != DBF_OK)
+	{
+		Dbf_Close(db);
+		PFile_Delete(path);
+		PFile_Rename(backupPath, path);
+		Dbf_Open(db, path);
+		return DBF_ERR_WRITE;
+	}
+	if (Dbf_Goto(db, position) != DBF_OK)
+	{
+		Dbf_Close(db);
+		PFile_Delete(path);
+		PFile_Rename(backupPath, path);
+		Dbf_Open(db, path);
+		return DBF_ERR_WRITE;
+	}
+
+	if (Dbf_Goto(db, position) != DBF_OK)
+		return DBF_ERR_WRITE;
+	return DBF_OK;
+}
+
+u8 Dbf_Pack(Dbf* db, const c8* path)
+{
+	if (!Dbf_IsOpen(db))
+		return DBF_ERR_OPEN;
+	if (db->Version != DBF_VER_II)
+		return DBF_ERR_WRITE;
+
+	c8 tempPath[DBF_PATH_MAX];
+	c8 backupPath[DBF_PATH_MAX];
+	if (!BuildSiblingPath(path, ".TMP", tempPath)
+		|| !BuildSiblingPath(path, ".BAK", backupPath))
+		return DBF_ERR_RANGE;
+	if (PathExists(tempPath) || PathExists(backupPath))
+		return DBF_ERR_WRITE;
+
+	u8 tempHandle = PFile_Create(tempPath);
+	if (tempHandle == PFILE_INVALID)
+		return DBF_ERR_WRITE;
+
+	u8 copyBuffer[DBF_COPY_SIZE];
+	u8 headerStart[8];
+	bool ok = PFile_Seek(db->Handle, 0)
+		&& (PFile_Read(db->Handle, headerStart, sizeof(headerStart)) == sizeof(headerStart))
+		&& (PFile_Write(tempHandle, headerStart, sizeof(headerStart)) == sizeof(headerStart));
+
+	u16 headerRemaining = DBF_II_HDR_SIZE - sizeof(headerStart);
+	while (ok && headerRemaining)
+	{
+		u16 chunk = (headerRemaining > sizeof(copyBuffer)) ? sizeof(copyBuffer) : headerRemaining;
+		ok = (PFile_Read(db->Handle, copyBuffer, chunk) == chunk)
+			&& (PFile_Write(tempHandle, copyBuffer, chunk) == chunk);
+		headerRemaining -= chunk;
+	}
+
+	u16 keptCount = 0;
+	for (u32 n = 1; ok && (n <= db->RecCount); n++)
+	{
+		ok = (Dbf_Goto(db, n) == DBF_OK);
+		if (ok && !Dbf_IsDeleted(db))
+		{
+			ok = PFile_Write(tempHandle, db->Buffer, db->RecLen) == db->RecLen;
+			if (ok)
+				keptCount++;
+		}
+	}
+
+	PlatformDate date;
+	Platform_GetDate(&date);
+	u8 headerUpdate[5];
+	headerUpdate[0] = (u8)keptCount;
+	headerUpdate[1] = (u8)(keptCount >> 8);
+	headerUpdate[2] = date.Month;
+	headerUpdate[3] = date.Day;
+	headerUpdate[4] = date.Year;
+	u8 eof = 0x1A;
+	if (ok)
+		ok = PFile_Seek(tempHandle, 1)
+			&& (PFile_Write(tempHandle, headerUpdate, sizeof(headerUpdate)) == sizeof(headerUpdate))
+			&& PFile_Seek(tempHandle, (u32)DBF_II_HDR_SIZE + (u32)keptCount * db->RecLen)
+			&& (PFile_Write(tempHandle, &eof, 1) == 1);
+
+	PFile_Close(tempHandle);
+	if (!ok)
+	{
+		PFile_Delete(tempPath);
+		return DBF_ERR_WRITE;
+	}
+
+	PFile_Close(db->Handle);
+	db->Handle = PFILE_INVALID;
+	if (!PFile_Rename(path, backupPath))
+	{
+		PFile_Delete(tempPath);
+		Dbf_Open(db, path);
+		return DBF_ERR_WRITE;
+	}
+	if (!PFile_Rename(tempPath, path))
+	{
+		PFile_Rename(backupPath, path);
+		PFile_Delete(tempPath);
+		Dbf_Open(db, path);
+		return DBF_ERR_WRITE;
+	}
+
+	if (Dbf_Open(db, path) != DBF_OK)
+	{
+		Dbf_Close(db);
+		PFile_Delete(path);
+		PFile_Rename(backupPath, path);
+		Dbf_Open(db, path);
+		return DBF_ERR_WRITE;
+	}
+	PFile_Delete(backupPath);
+	return DBF_OK;
 }
 
 u8 Dbf_Skip(Dbf* db, i32 n)

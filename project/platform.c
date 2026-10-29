@@ -91,3 +91,31 @@ bool PFile_Delete(const c8* path)
 {
 	return DOS_Delete(path) == DOS_ERR_NONE;
 }
+
+static bool CopyFindEntry(const DOS_FIB* fib, PlatformFileEntry* entry)
+{
+	if (!fib)
+		return FALSE;
+	u8 i = 0;
+	while (fib->Filename[i] && (i < sizeof(entry->Name) - 1))
+	{
+		entry->Name[i] = fib->Filename[i];
+		i++;
+	}
+	entry->Name[i] = 0;
+	entry->Size = fib->Size;
+	entry->Year = DOS_GetFileYear(fib);
+	entry->Month = DOS_GetFileMonth(fib);
+	entry->Day = DOS_GetFileDay(fib);
+	return TRUE;
+}
+
+bool PFile_FindFirst(const c8* pattern, PlatformFileEntry* entry)
+{
+	return CopyFindEntry(DOS_FindFirstEntry(pattern, 0), entry);
+}
+
+bool PFile_FindNext(PlatformFileEntry* entry)
+{
+	return CopyFindEntry(DOS_FindNextEntry(), entry);
+}

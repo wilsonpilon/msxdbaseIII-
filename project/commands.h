@@ -13,4 +13,8 @@ void Command_Done(void);
 // Executa uma linha digitada. Retorna FALSE quando o usuario pediu para sair (QUIT).
 bool Command_Execute(const c8* line);
 
+// Completa ciclicamente o primeiro token com nomes de comandos.
+u8 Command_Complete(const c8* prefix, u8 prefixLen, u8 matchIndex,
+	 c8* result, u8 resultMax, u8* matchCount);
+
 #endif

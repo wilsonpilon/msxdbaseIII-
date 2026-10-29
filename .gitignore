@@ -58,3 +58,16 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Local third-party media and historical binary release packages are not redistributed.
+/resource/dBaseII/
+/resource/dBaseIII/
+/resource/supercalc2/
+/resource/wordstar3/
+/resource/dBASE-II-v2.4.zip
+/resource/msxdos1.dsk
+/resource/Online Retail.txt
+/resource/produto.dbf
+/resource/venda.dbf
+/release/3.0/
+/release/msxdbase-3.0-downloads.zip

@@ -1,6 +1,6 @@
 # Matriz de compatibilidade: dBASE II Plus para MSX
 
-Esta matriz acompanha a conformidade com a edição MSX, não com uma implementação genérica de CP/M ou dBASE III. Os PDFs em `resource/` são as fontes primárias. Os números de página abaixo são os impressos nos livros/manuais; OCR foi usado para localizar conteúdo e pode conter erros, então detalhes de formato e regras críticas devem ser conferidos visualmente na página original.
+Esta matriz acompanha a conformidade com a edição MSX, não com uma implementação genérica de CP/M ou dBASE III. Os manuais impressos foram consultados localmente; os PDFs comerciais não são distribuídos neste repositório. Os números de página abaixo são os impressos nos livros/manuais; OCR foi usado para localizar conteúdo e pode conter erros, então detalhes de formato e regras críticas devem ser conferidos visualmente numa cópia licenciada.
 
 Legenda: **Confirmado** = comportamento encontrado na fonte; **Parcial** = há evidência, mas falta definir ou testar detalhes; **Pendente** = ainda não implementado ou a fonte não foi localizada; **Validado** = executado no projeto.
 
@@ -26,15 +26,19 @@ Legenda: **Confirmado** = comportamento encontrado na fonte; **Parcial** = há e
 | `USE` | Abre ou fecha o arquivo ativo; o manual descreve extensão `.DBF` | `USE PESSOAL` e `USE ALUNOS` validados com DBF II no openMSX |
 | `CREATE` | Define estrutura por nome, tipo, tamanho e casas decimais; tipos listados: `C/N/L` | Pendente |
 | `LIST`, `DISPLAY`, `GO`, `SKIP` | Referência do manual, cap. 6; navegação por registro físico/ordem ativa | `LIST`, `DISPLAY STRUCTURE`, `GO 6` e `DISPLAY` validados com DBF II (`PESSOAL` e `ALUNOS`); `SKIP` permanece validado com DBF III |
-| `APPEND` | Entrada interativa de um registro por vez; atualiza índices ativos | Pendente |
+| `DISPLAY FILES` | Extensão utilitária do projeto; não faz parte do conjunto oficial dBASE II | Sem padrão lista DBFs com contagem/data do cabeçalho; `LIKE` usa padrão literal; runtime com e sem correspondências validado no openMSX |
+| `APPEND` | Entrada interativa de um registro por vez; atualiza índices ativos | Formulário C/N/L DBF II testado no openMSX: navegação, correção de Numeric/Logical, campos vazios, cancelamento e gravação. Índices não implementados |
 | `APPEND BLANK` | Adiciona um registro em branco sem entrar na tela de inclusão; no original MSX, substitui EOF, atualiza contador/data e mantém o tamanho físico preenchendo o tail com `0xFF` | Implementado e validado byte a byte em DBF II (`PESSOAL`, `ALUNOS`); `CLIENTES.DBF` (`0x03`) é recusado como esperado; falta confirmar por comparação que o arquivo recusado não mudou |
-| `REPLACE` | Altera campos; sem escopo/cláusula, atua no registro atual; índices ativos precisam ser atualizados | Pendente |
-| `DELETE` | Marca o registro com `*`; não o remove fisicamente | Pendente |
-| `RECALL` | Recupera registros marcados, sujeito ao escopo; não recupera registros já removidos por `PACK` | Pendente |
-| `PACK` | Remove fisicamente registros marcados; o manual informa atualização de índices e liberação do espaço após fechar o arquivo | Pendente; requer substituição segura e testes de falha |
-| `SET DELETED` | Controla a visibilidade de registros marcados para outros comandos | Pendente |
+| `INSERT [BEFORE] [BLANK]` | Insere em relacao ao ponteiro atual; `BEFORE` posiciona antes; `BLANK` suprime a entrada interativa | Implementado para DBF II com troca `.TMP/.BAK`; insercoes interativas e vazias testadas em copia. Limites BOF/EOF, rollback de falha e indice ativo pendentes |
+| `SET CONFIRM ON/OFF` | ON (padrao) exige confirmacao para avancar; OFF avanca ao preencher o campo e, no ultimo, inicia outro registro | Implementado para os formularios `APPEND` e `INSERT`; ON/OFF validados no openMSX |
+| `HELP`, `SET HELP`, `SET MSX` | dBASE II MSX inclui arquivo de mensagens com introducao e topicos de comando; o modo interativo usa HELP por palavra-chave | `HELP` sem argumentos mostra resumo local; `HELP DBASE` e `HELP <COMANDO>` dependem de `DB8SEMSG.TXT` fornecido pelo usuario. TXT validado; viewer SCREEN implementado, validacao visual final pendente |
+| `REPLACE` | Altera campos; sem escopo/cláusula, atua no registro atual; índices ativos precisam ser atualizados | `REPLACE [ALL] campo WITH expressão [FOR condição]` implementado para Numeric; `FOR` aceita uma comparação numérica. Runtime validado: `IDADE < 12` alterou 3 de 6 registros. `WHILE` e gramática completa pendentes |
+| `DELETE` | Marca o registro com `*`; não o remove fisicamente | Implementado para o registro atual em DBF II; teste funcional reportado pelo usuário, comparação byte a byte pendente |
+| `RECALL` | Recupera registros marcados, sujeito ao escopo; não recupera registros já removidos por `PACK` | Implementado para o registro atual em DBF II; teste funcional reportado pelo usuário, comparação byte a byte pendente |
+| `PACK` | Remove fisicamente registros marcados; o manual informa atualização de índices e liberação do espaço após fechar o arquivo | Implementado com `.TMP` e `.BAK` para DBF II; teste funcional reportado pelo usuário; recuperação de falhas e integração com NDX pendentes |
+| `SET DELETED` | Controla a visibilidade de registros marcados para outros comandos | `SET DELETED ON/OFF` implementado (padrão OFF); ocultação do registro marcado validada em `LIST`; `DISPLAY` e `REPLACE ALL` usam o mesmo filtro. `GO`/`SKIP` continuam físicos |
 | `INDEX`, `FIND`, `REINDEX`, `SET INDEX` | Fazem parte da edição MSX; índices `.NDX`, até sete arquivos ativos e chave de até 100 caracteres, conforme manual | Pendente; pertence ao núcleo dBASE II MSX, não a extensão dBASE III |
-| Modo interativo | Prompt `.` e comandos executados diretamente; livro interativo detalha navegação, edição e exclusão | Parcial: prompt básico existe; falta a interação compatível dos comandos de tela |
+| Modo interativo | Prompt `.` e comandos executados diretamente; livro interativo detalha navegação, edição e exclusão | Parcial: histórico, TAB, edição horizontal e limpeza da linha ao descer além do histórico implementados e testados pelo usuário; ainda faltam outras funções de edição e interação dos comandos de tela |
 | Modo programável | Arquivos de comando executados com `DO`; livros descrevem entrada, controle de fluxo e edição de dados via programas | Pendente: lexer/parser, variáveis, expressões e execução `.PRG` |
 
 ## Classificação das extensões
@@ -46,11 +50,11 @@ Legenda: **Confirmado** = comportamento encontrado na fonte; **Parcial** = há e
 | Áreas adicionais, aliases e relações | Além das duas áreas Primary/Secondary descritas para dBASE II | Extensão posterior; verificar cada comando contra o manual MSX |
 | Limitações de comandos específicas da edição MSX | Manual oficial, cap. 1 e notas dos comandos; há aviso de comandos não implementados na versão MSX | Pendente: identificar e catalogar individualmente antes de declarar cobertura total |
 
-## Fontes consultadas
+## Fontes consultadas localmente
 
-- `resource/Dbase 2 Plus Msx.pdf`: manual oficial, capítulos 1, 4, 6 e 7.
-- `resource/dbase_ii_plus_interativo_para_msx.pdf`: Nelson Casari, *dBASE II Plus para MSX Interativo*, 2ª ed.; capítulos sobre estrutura, modos, alteração e exclusão.
-- `resource/dbase_programavel_msx.pdf`: Nelson Casari, *dBASE II Plus para MSX Programável*, 2ª ed.; capítulos sobre arquivos de comando, entrada/alteração de dados e fluxo de programa.
+- Manual oficial dBASE II Plus para MSX, capítulos 1, 4, 6 e 7 (cópia licenciada local; não incluída no release).
+- Nelson Casari, *dBASE II Plus para MSX Interativo*, 2ª ed. (referência local; não incluída no release).
+- Nelson Casari, *dBASE II Plus para MSX Programável*, 2ª ed. (referência local; não incluída no release).
 - `resource/PESSOAL.DBF`: arquivo criado no dBASE II para MSX, usado para confirmar o cabeçalho e os descritores binários da variante `0x02`.
 
 A matriz é incremental. “Compatibilidade 100%” só deve ser declarada quando os itens aplicáveis estiverem implementados e cobertos por testes contra arquivos/comportamentos observados no software dBASE II Plus para MSX original.

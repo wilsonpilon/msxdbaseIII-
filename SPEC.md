@@ -41,7 +41,7 @@ Como o Z80 possui barramento de endereçamento de 16 bits (64 KB visíveis por v
 ### 3.2 Formato de Dados e Compatibilidade
 * **Estrutura `.dbf` (dBASE II Plus para MSX):**
   * Registros de tamanho fixo e campos Character, Numeric e Logical; aplicar os limites publicados especificamente para a edição MSX.
-  * O layout da variante MSX foi confirmado em `resource/PESSOAL.DBF`; `resource/ALUNOS.DBF` acrescenta uma fixture DBF II com `RecLen=41` para testar outros offsets de campo. `APPEND BLANK` foi observado no dBASE II original: substitui o EOF antigo por um registro de espaços, atualiza contador/data, grava novo `0x1A` e preenche o restante do tamanho físico com `0xFF`. A regra está implementada para DBF II e comparada byte a byte em cópias de `PESSOAL` e `ALUNOS`. Mutações DBF III não são suportadas. Compatibilidade com arquivos CP/M só será declarada quando validada separadamente.
+  * O layout da variante MSX foi confirmado em `resource/PESSOAL.DBF`; `resource/ALUNOS.DBF` acrescenta uma fixture DBF II com `RecLen=41` para testar outros offsets de campo. `APPEND BLANK` foi observado no dBASE II original: substitui o EOF antigo por um registro de espaços, atualiza contador/data, grava novo `0x1A` e preenche o restante do tamanho físico com `0xFF`. A regra está implementada para DBF II e comparada byte a byte em cópias de `PESSOAL` e `ALUNOS`. `REPLACE`, `DELETE`, `RECALL` e `PACK` foram implementados para DBF II; testes funcionais foram reportados pelo usuário, mas casos byte a byte e de falha não estão detalhados. Mutações DBF III não são suportadas. Compatibilidade com arquivos CP/M só será declarada quando validada separadamente.
 * **Indexação:** índices `.NDX` e comandos documentados no manual MSX pertencem ao núcleo dBASE II; formatos de outras versões são extensões posteriores.
 
 ---
@@ -146,6 +146,12 @@ Módulos planejados: `core` (runtime, erros, valores), `parser` (lexer, parser, 
 ### 6.6 Linguagem
 Caminho: `.PRG` → lexer → tokens → parser → bytecode compacto → máquina virtual → engine. No modo interativo, cada linha é compilada para um buffer temporário e executada. Evitar cadeias de comparação de strings para comandos (a tabela de comandos atual é transitória, até o lexer existir). `.PRG` deve evoluir para: sequências, variáveis, expressões, IF/DO WHILE, procedimentos, parâmetros e retorno.
 
+Implementação incremental atual: `REPLACE [ALL] campo WITH expressão` aceita campos de destino Numeric, referências a campos Numeric, números decimais, sinal unário, parênteses e `+`, `-`, `*`, `/`, com precedência aritmética usual. A escala intermediária é limitada a 6 casas decimais, com mantissa assinada de 32 bits; ao gravar, o resultado é arredondado para as casas do campo. `ALL` primeiro percorre e valida todos os registros e só depois inicia as gravações. Uma falha física durante a segunda passagem ainda pode deixar registros anteriores alterados. `REPLACE ALL` aceita uma cláusula `FOR` com uma comparação entre expressões Numeric (`=`, `==`, `<>`, `!=`, `<`, `<=`, `>` e `>=`), pré-validada antes de gravar. Ainda não há `WHILE`, `AND`/`OR`, funções, expressões Character/Logical nem parser/lexer geral; a implementação não representa conformidade completa com a linguagem dBASE.
+
+`SET DELETED` inicia em `OFF`. Com `ON`, `LIST` e `DISPLAY` do registro atual não mostram registros marcados; `DISPLAY` em um registro excluído posicionado por `GO`/`SKIP` informa que ele está oculto. `REPLACE ALL` ignora registros excluídos tanto na pré-validação quanto na gravação. `GO` e `SKIP` continuam usando a ordem física, e `DISPLAY STRUCTURE` mantém a contagem física.
+
+Exemplo de `FOR`: `REPLACE ALL SALARIO WITH SALARIO * 1.1 FOR SALARIO < 5000`. A condição é avaliada antes da atribuição em cada registro e também na pré-validação. Uma condição por comando; `AND`, `OR`, comparações Character/Logical e `FOR` sem `ALL` ainda não são suportados.
+
 ### 6.7 Tipos de dados
 Núcleo MSX: Character, Numeric, Logical. Date e Memo (`.DBT`) ficam para extensões posteriores, se confirmados como recursos de outra versão. Evitar ponto flutuante; avaliar decimal fixo ou BCD para Numeric. Tratar largura, casas decimais, espaços, sinal, overflow, vazio, comparação e conversão texto/número.
 
@@ -155,6 +161,7 @@ Núcleo MSX: Character, Numeric, Logical. Date e Memo (`.DBT`) ficam para extens
 - A amostra tem 6 registros de 36 bytes, campos `NOME C(15)`, `CARGO C(10)`, `SALARIO N(5)`, `DATADM C(5)`, e comprimento físico de 1024 bytes. O uso de EOF e o significado do padding após os registros ainda precisam ser confirmados; não interpretar os bytes extras como registros.
 - O leitor aceita DBF II MSX e DBF III para a fixture de desenvolvimento/interoperabilidade. Não inferir o layout DBF II a partir do DBF III.
 - Cuidados: variante exata, cabeçalho, descritores, tamanho do registro, marca de exclusão, fim lógico (0x1A), codificação, integridade após interrupção, gravação segura do cabeçalho e da contagem de registros.
+- Estado das mutações: `REPLACE campo WITH valor` altera apenas o registro atual e aceita campos C/N/L; `DELETE` e `RECALL` alteram a marca do registro atual. `PACK` copia cabeçalho e registros ativos para `.TMP`, fecha o arquivo temporário e troca o original via `.BAK`, com tentativa de restauração se a troca falhar. Essas rotinas são DBF II apenas; rollback após escrita parcial e recuperação após interrupção ainda precisam de testes em runtime. `.TMP` ou `.BAK` preexistentes fazem a operação falhar sem sobrescrevê-los.
 - Segurança em operações destrutivas (`PACK`, `SORT`, `INDEX`, reconstrução, memo): usar arquivos temporários, validar espaço livre, preservar o original até o fim, permitir recuperação e não atualizar metadados críticos cedo demais.
 - Limites atuais da engine: 32 campos e registro de até 256 bytes (buffer estático). Ampliar quando houver necessidade e medição de RAM.
 
@@ -182,8 +189,21 @@ MVP: 2 áreas (PRIMARY/SECONDARY), `SELECT`. Evolução: 4 áreas e até 10 conf
 - Inspirados no dBASE III: Date, Memo, mais áreas, aliases, procedimentos estruturados, expressões ricas, editor integrado.
 Cada comando deve ter especificação própria: sintaxe, parâmetros, comportamento, erros, interação com filtro e índice, consumo de memória, compatibilidade e testes.
 
+`APPEND` sem argumento abre um formulário simultâneo para os campos C/N/L, com faixas de entrada delimitadas por `:` nas duas extremidades. Campos vazios ficam preenchidos com espaços; texto alinha à esquerda, Numeric à direita e Logical é normalizado para `T`/`F`. Enter, Tab e Down avançam; Up volta ao campo anterior; Left/Right movem o cursor; Backspace/Delete editam; ESC cancela sem gravar. Enter no último campo grava somente depois de todos os valores serem validados; um valor inválido permanece selecionado para correção. `APPEND BLANK` permanece como atalho. `SET COLON ON/OFF` mostra/oculta ambos os delimitadores, com padrão ON. Em estruturas maiores que a área visível, a tela acompanha o campo selecionado.
+
+`INSERT [BEFORE] [BLANK]` insere um registro na posicao relativa ao ponteiro atual. Sem `BEFORE`, insere depois do registro atual; com `BEFORE`, antes. Em BOF/EOF, limita a insercao ao inicio/fim do banco. Sem `BLANK`, apresenta o mesmo formulario C/N/L; com `BLANK`, grava espacos. Apos sucesso, o ponteiro fica no registro inserido. Mutacoes DBF III e indices ativos nao sao suportados.
+
+`SET CONFIRM ON|OFF` controla a navegacao dos formularios de `APPEND` e `INSERT`; o padrao e ON, no qual preencher toda a largura do campo nao avanca ate Enter/Tab/Down. OFF avanca automaticamente quando o campo alcanca seu tamanho definido; completar o ultimo campo grava o registro e abre o formulario seguinte. Cancelar esse formulario nao reverte registros ja gravados.
+
+### Ajuda online e modos MSX
+`HELP` sem argumentos apresenta um resumo local de comandos e não abre arquivos. `HELP DBASE` e `HELP <COMANDO>` dependem do arquivo externo `DB8SEMSG.TXT`; sua inclusão no DSK de desenvolvimento é opcional e o arquivo não é distribuído. Quando presente, a leitura usa um índice compacto de offsets em streaming, com capacidade de 160 tópicos. `Help_Init` zera contadores, flags e sentinelas antes do primeiro uso, pois o CRT0 não garante a inicialização do BSS deste módulo. Sem o arquivo original, os tópicos detalhados informam que ele está ausente; o resumo continua funcionando.
+
+`SET HELP TXT|SCREEN` seleciona texto paginado ou janela. A janela oferece rolagem vertical/horizontal, página anterior/seguinte, busca `/` ou `F`, próxima ocorrência `N` e saída `Esc`. O quadro usa uma única cor de Text2 e atualiza o conteúdo sem redesenhar a moldura a cada tecla. O layout e a paginação foram implementados, mas a validação visual final da versão 3.1 continua pendente.
+
+`SET MSX OFF|ON` controla as extensões de interface: OFF (padrão) usa ajuda TXT e desativa cores/viewer; ON habilita cores e permite o modo SCREEN. A seleção de HELP é preservada ao alternar MSX. O gate atual cobre cores e ajuda; novas extensões visuais/de entrada também devem consultá-lo. Recursos clássicos como `SET CONFIRM` continuam funcionando em ambos os modos.
+
 ### 6.13 Interface nativa MSX
-Desejado: cores configuráveis, setas, Home/End/PgUp/PgDn, edição de linha, histórico, janelas, menus, caracteres gráficos, caixas de diálogo, barra de estado, ajuda contextual, mouse opcional, 40 e 80 colunas. A UI não pode contaminar a engine DBF nem o interpretador. Deve sempre existir modo console (máquinas menores, automação, `.PRG`, depuração, testes).
+Desejado: cores configuráveis, setas, Home/End/PgUp/PgDn, edição de linha, histórico, janelas, menus, caracteres gráficos, caixas de diálogo, barra de estado, ajuda contextual, mouse opcional, 40 e 80 colunas. O prompt atual mantém oito comandos no histórico (setas para cima/baixo); descer além do mais recente limpa a linha. Esquerda/direita movem o cursor e permitem inserir, Backspace e Delete no ponto escolhido. TAB completa ciclicamente nomes de comandos pelo prefixo; sem correspondência, exibe aviso. Ainda faltam Home/End, histórico persistente e completamento de argumentos. A UI não pode contaminar a engine DBF nem o interpretador. Deve sempre existir modo console (máquinas menores, automação, `.PRG`, depuração, testes).
 
 ### 6.14 Desempenho
 Gargalos esperados: disco, índices, troca de segmentos, parsing repetitivo, ordenação, cópia de registros, pouca RAM linear. Estratégias: buffers alinhados a setor/bloco, cache pequeno e previsível, leitura antecipada, gravação agrupada onde for seguro, bytecode, índices por páginas, overlays, evitar gráficos em lote, modo silencioso, medir em hardware real e emulador.
@@ -196,6 +216,12 @@ Nomes propostos (não fechados): `SET COLOR TO`, `SET SCREEN TO`, `SET MOUSE ON`
 - Integridade: interrupção em APPEND/PACK, disco cheio, somente leitura, índice desatualizado, DBT ausente, referência de memo inválida.
 - Plataforma: MSX2, MSX2+, turbo R; 512 KB e 1 MB de mapper; MSX-DOS 1 (se suportado) e 2; interfaces de armazenamento; emuladores e hardware real.
 - Golden files: bancos pequenos conhecidos, comparados byte a byte após operações. O primeiro é `project/data/CLIENTES.DBF` (gerado por `project/data/make_sample_dbf.ps1`).
+- Runtime openMSX (2026-10-29): formulário `APPEND` C/N/L, navegação/retorno, reentrada após erro, cancelamento, campos vazios e `SET COLON ON/OFF` validados em cópias temporárias.
+- Runtime openMSX (2026-10-29): `SET DELETED ON` omitiu o único registro marcado em `CLIENTES.DBF`; `DISPLAY FILES` listou DBFs/arquivos e reportou ausência de `*.FRM`; `REPLACE ALL ... FOR` alterou 3/6 registros com `IDADE < 12`.
+- Runtime openMSX (2026-10-29): `INSERT BLANK` depois do registro 2 e `INSERT BEFORE BLANK` antes do registro 2 mantiveram a ordem e contador esperados; inclusao interativa `INSERT BEFORE` gravou valores C/N no local correto. `.BAK` foi removido apos cada troca.
+- Runtime openMSX (2026-10-29): `SET CONFIRM ON` manteve o campo completo ativo ate Enter; OFF avancou automaticamente nos campos C/N e, ao completar o ultimo, gravou e abriu outro formulario em `APPEND` e `INSERT BEFORE`.
+- Runtime openMSX (2026-10-29): resumo original DBASE/HELP, topico `INSERT`, janela SCREEN, paginação, busca e fallback TXT com MSX OFF foram validados e capturados em `docs/screenshots/`.
+- A fixture DBF II com Logical foi criada somente em `%TEMP%` para testar `APPEND L`; ela não integra o disco padrão.
 
 ### 6.17 Critérios para aceitar uma funcionalidade
 1. É núcleo dBASE II, recurso do III ou extensão MSX? 2. Em qual marco entra? 3. Impacto na RAM residente? 4. Exige segmento mapeado/overlay? 5. Altera DBF/NDX/DBT? 6. Como será testada? 7. Funciona sem UI gráfica? 8. Funciona em arquivo maior que a memória? 9. Mantém integridade após erro? 10. Precisa ser compatível com arquivos de outra implementação?
@@ -207,10 +233,9 @@ Nomes propostos (não fechados): `SET COLOR TO`, `SET SCREEN TO`, `SET MOUSE ON`
 - Em conflito, vale a decisão mais recente e explicitamente aprovada; corrigir os documentos para não divergirem.
 
 ### 6.19 Referências de compatibilidade dBASE II para MSX
-As referências locais em `resource/` definem o comportamento do núcleo compatível com a edição MSX. Consultá-las ao especificar comandos, sintaxe, mensagens, fluxo interativo, execução de programas e formatos; não inferir diferenças da versão CP/M ou do dBASE III sem evidência.
-- `resource/Dbase 2 Plus Msx.pdf`: manual oficial do dBASE II Plus para MSX e fonte prioritária para comportamento e sintaxe.
-- `resource/dbase_ii_plus_interativo_para_msx.pdf`: referência complementar para detalhes do modo interativo.
-- `resource/dbase_programavel_msx.pdf`: referência complementar para detalhes do modo programável e da linguagem.
+As referências impressas consultadas localmente definem o comportamento do núcleo compatível com a edição MSX. Os PDFs comerciais não são distribuídos no repositório nem nos releases. Ao especificar comandos, sintaxe, mensagens, fluxo interativo, execução de programas e formatos, use uma cópia licenciada; não infira diferenças da versão CP/M ou do dBASE III sem evidência.
+
+Fontes consultadas: manual oficial do dBASE II Plus para MSX; Nelson Casari, *dBASE II Plus para MSX Interativo*, 2ª ed.; Nelson Casari, *dBASE II Plus para MSX Programável*, 2ª ed.
 
 Em caso de divergência, priorizar o manual oficial para o comportamento do produto e usar os livros para esclarecer detalhes dos modos interativo e programável. Registrar lacunas ou conflitos como questões em aberto, sem convertê-los silenciosamente em extensões. Recursos de dBASE III, CP/M ou próprios do projeto devem ser identificados separadamente. A meta de 100% é uma meta de conformidade verificável contra essas fontes, não uma afirmação de que já foi alcançada; cada comando e modo deve ganhar testes de conformidade à medida que for implementado.
 
